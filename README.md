@@ -1,4 +1,4 @@
-# 🏦 TumiPay — Risk Engine & Financial AI Advisor
+# Risk Engine & Financial AI Advisor
 
 ![Python](https://img.shields.io/badge/python-3.14-blue.svg)
 ![LightGBM](https://img.shields.io/badge/LightGBM-4.6.0-orange.svg)
