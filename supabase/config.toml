@@ -7,7 +7,7 @@
 #   3. Ejecuta: supabase link --project-ref <project-ref>
 #   4. Ejecuta: supabase db push
 
-project_id = "your-project-ref"
+project_id = "iyklhflloqppliejlgzh"
 
 [api]
 port = 54321

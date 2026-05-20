@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # Base de Datos (PGVector / PostgreSQL)
     DATABASE_URL: str = "postgresql://root:root@localhost:5432/tumipay_db"
     
+    # Supabase
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+
     # Credenciales de API (leer siempre desde .env, nunca hardcodear)
     NVIDIA_API_KEY: str = ""
     
