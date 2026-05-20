@@ -1,0 +1,47 @@
+# ── Entornos virtuales ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Python compilado y caché ─────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# ── Secretos y configuración local ───────────────────────────────────────────
+.env
+.env.*
+!.env.example          # la plantilla sí se versiona
+
+# ── Datos (no subir CSVs ni parquets) ────────────────────────────────────────
+/data/raw/*
+!/data/raw/.gitkeep
+/data/processed/*
+!/data/processed/.gitkeep
+
+# ── Modelos entrenados (binarios grandes) ────────────────────────────────────
+/models/*
+!/models/.gitkeep
+
+# ── Power BI (binarios no versionables, pueden contener datos cacheados) ─────
+*.pbix
+# ✅ Los archivos .pbit (plantilla sin datos) sí se pueden versionar
+
+# ── Sistema operativo ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
