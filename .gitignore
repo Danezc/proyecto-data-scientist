@@ -17,10 +17,11 @@ build/
 .ipynb_checkpoints/
 */.ipynb_checkpoints/
 
-# ── Secretos y configuración local ───────────────────────────────────────────
+# Secretos y configuración local
 .env
 .env.*
-!.env.example          # la plantilla sí se versiona
+# La plantilla sí se versiona (no contiene claves reales)
+!.env.example
 
 # ── Datos (no subir CSVs ni parquets) ────────────────────────────────────────
 /data/raw/*
