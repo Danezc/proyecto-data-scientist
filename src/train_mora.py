@@ -31,15 +31,24 @@ class MoraModelTrainer:
     def train_test_split_custom(self, df: pd.DataFrame, target_col: str = 'es_moroso') -> Tuple:
         """
         Divide los datos en entrenamiento y prueba asegurando validación robusta y estratificada.
-        Elimina columnas datetime y codifica strings como 'category' para LightGBM.
+        Elimina columnas datetime, variables con fuga (leakage) e identificadores irrelevantes.
+        Codifica strings como 'category' para LightGBM.
         """
         # Columnas de ID/target que no son predictores
-        id_cols = {'cliente_id', 'credito_id', 'pago_id', target_col}
+        id_cols = {'cliente_id', 'credito_id', 'pago_id', 'email_hash', target_col}
+        
+        # Filtro estricto anti-data leakage:
+        # 'estado_credito_operativo' refleja la morosidad ocurrida después de la originación.
+        leakage_cols = {'estado_credito_operativo', 'probabilidad_mora', 'prediccion_mora'}
 
         # Excluir también todas las columnas datetime (fechas sin feature-engineering)
-        date_cols = set(df.select_dtypes(include='datetime').columns.tolist())
+        date_cols = set(df.select_dtypes(include=['datetime', 'datetime64']).columns.tolist())
+        # También buscar nombres de fecha si son de tipo object pero no convertidos
+        for col in df.columns:
+            if 'fecha' in col:
+                date_cols.add(col)
 
-        drop_cols = id_cols | date_cols
+        drop_cols = id_cols | leakage_cols | date_cols
         features = [c for c in df.columns if c not in drop_cols]
 
         X = df[features].copy()
@@ -47,7 +56,7 @@ class MoraModelTrainer:
 
         # Convertir strings a 'category' → LightGBM los maneja nativamente sin one-hot
         # include=['object', 'str'] cubre pandas 2 (object) y pandas 3 (StringDtype)
-        for col in X.select_dtypes(include=['object', 'str']).columns:
+        for col in X.select_dtypes(include=['object', 'str', 'category']).columns:
             X[col] = X[col].astype('category')
 
         X_train, X_test, y_train, y_test = train_test_split(
@@ -55,20 +64,23 @@ class MoraModelTrainer:
         )
 
         logger.info(f"Dataset particionado. Train={X_train.shape[0]}, Test={X_test.shape[0]}.")
+        logger.info(f"Features utilizadas en el modelo ({len(features)}): {features}")
         return X_train, X_test, y_train, y_test
 
     def train_model(self, X_train: pd.DataFrame, y_train: pd.Series) -> LGBMClassifier:
-        """Entrena el modelo LightGBM para clasificación binaria."""
-        logger.info("Iniciando entrenamiento del modelo LightGBM...")
+        """Entrena el clasificador LightGBM con parámetros de regularización."""
+        logger.info("Entrenando modelo LightGBM...")
         model = LGBMClassifier(
             objective='binary',
-            class_weight='balanced', # Crucial para desbalanceo de clases
-            n_estimators=100,
-            learning_rate=0.05,
+            class_weight='balanced',
+            n_estimators=80,
+            learning_rate=0.03,
+            max_depth=4,
+            num_leaves=15,
+            min_child_samples=30,
             random_state=42
         )
         model.fit(X_train, y_train)
-        logger.info("Entrenamiento finalizado.")
         return model
 
     def evaluate_model(self, model: LGBMClassifier, X_test: pd.DataFrame, y_test: pd.Series):

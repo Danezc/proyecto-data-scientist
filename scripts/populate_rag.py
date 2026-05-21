@@ -362,7 +362,7 @@ def main(reset: bool = True, include_fichas: bool = True) -> int:
         pre_delete_collection=reset,
     )
 
-    logger.info(f"✅  RAG Knowledge Base poblado con {len(final_docs)} chunks.")
+    logger.info(f"RAG Knowledge Base poblado con {len(final_docs)} chunks.")
     logger.info("Verifica con: SELECT COUNT(*) FROM langchain_pg_embedding;")
     return len(final_docs)
 

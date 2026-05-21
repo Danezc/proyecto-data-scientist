@@ -34,12 +34,10 @@ class RAGAgentPipeline:
                 "Agrega 'NVIDIA_API_KEY=<tu-clave>' en el archivo .env y pásala con settings.NVIDIA_API_KEY."
             )
         
-        # 1. Embedding Model (Local Open Source - Qwen / Sentence Transformers)
-        # Nota: Qwen3 u otro modelo equivalente puede cargarse usando huggingface. 
-        # Tamaño 0.6B es espectacular para RAG asíncrono con buena retención de semántica financiera.
+        # Embedding Model (CPU, local)
         self.embeddings = HuggingFaceEmbeddings(
-            model_name="intfloat/multilingual-e5-small", # Cambiar por el repo exacto de Qwen si está disponible en local
-            model_kwargs={'device': 'cpu'}, # 'cuda' si tienes GPU libre
+            model_name="intfloat/multilingual-e5-small",
+            model_kwargs={'device': 'cpu'},
             encode_kwargs={'normalize_embeddings': True}
         )
         
@@ -50,16 +48,16 @@ class RAGAgentPipeline:
             collection_name="rag_conocimiento"
         )
         
-        # 3. LLM Model (Nvidia NIM — parámetros según documentación oficial de NVIDIA)
+        # LLM via NVIDIA NIM
         self.llm = ChatOpenAI(
             base_url="https://integrate.api.nvidia.com/v1",
             api_key=nvidia_api_key,
-            model="minimaxai/minimax-m2.7",
-            temperature=1,
-            top_p=0.95,
-            max_tokens=8192,
+            model="meta/llama-3.1-8b-instruct",
+            temperature=0.1,
+            top_p=0.9,
+            max_tokens=2048,
             streaming=True,   # streaming reduce la latencia del primer token
-            timeout=60.0,     # minimax-m2.7 puede tardar más que modelos pequeños
+            timeout=120.0,    # Incrementado para asegurar la finalización
         )
         
         # 4. Construcción del Grafo (LangGraph Workflow)

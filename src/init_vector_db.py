@@ -1,6 +1,8 @@
 import logging
 from src.rag_agent import TextToSQLRAGAgent
 from langchain_core.documents import Document
+from src.config import settings
+from src.db_utils import create_supabase_engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -10,7 +12,8 @@ def embed_database_schema_to_vector():
     Lee el archivo de esquema ddl e inserta su definición como contexto en PGVector
     para que nuestro LLM Text-To-SQL sepa qué tablas existen al ser preguntado.
     """
-    db_url = "postgresql://root:root@localhost:5432/tumipay_db" # Ajusta con tus credenciales
+    db_url = settings.DATABASE_URL
+    create_supabase_engine(db_url)
     
     agent = TextToSQLRAGAgent(db_connection=db_url)
     
@@ -19,8 +22,6 @@ def embed_database_schema_to_vector():
         with open(schema_path, "r", encoding="utf-8") as f:
             esquema_completo = f.read()
             
-        # Podríamos partirlo text-splitter si fuera inmenso, 
-        # pero es útil entregarle a todo el DDL un bloque o bloques por tablas
         
         doc = Document(
             page_content=f"Este es el esquema de tablas del Core Bancario de TUMIPAY. Úsalo para crear queries SQL:\n{esquema_completo}",

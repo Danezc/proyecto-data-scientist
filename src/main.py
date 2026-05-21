@@ -27,7 +27,7 @@ class PredictionRequest(BaseModel):
     monto_credito: float = Field(..., example=5000.0)
     plazo_meses: int = Field(..., example=12)
     valor_cuota_pactada: float = Field(..., example=500.0)
-    # Agregar más variables generadas en la ABT según corresponda
+
 
 class PredictionResponse(BaseModel):
     score_riesgo_mora: float
@@ -61,20 +61,54 @@ def predict_risk(data: PredictionRequest):
     Evalúa un nuevo perfil de cliente y retorna un score de probabilidad de default (mora).
     """
     if not model_artifact:
-        raise HTTPException(status_status=503, detail="El modelo no está cargado en el sistema.")
+        raise HTTPException(status_code=503, detail="El modelo no está cargado en el sistema.")
         
     # Transformar a DataFrame asegurando el orden de columnas del entrenamiento
     features_requeridos = model_artifact['features']
     input_data = data.model_dump()
     
-    # Rellenar eventuales features faltantes temporalmente (por simplicidad en la prueba)
     df_input = pd.DataFrame([input_data])
+    
+    # Definir variables numéricas para rellenar con 0.0, el resto con 'Desconocido'
+    numerical_cols = {
+        'edad', 'ingreso_mensual_estimado', 'score_externo', 'monto_credito',
+        'plazo_meses', 'tasa_interes_mensual', 'valor_cuota_pactada', 
+        'score_interno_originacion', 'relacion_cuota_ingreso', 'numero_dependientes',
+        'antiguedad_cliente_dias', 'mes_desembolso', 'dia_semana_desembolso',
+        'prev_evento_actualizacion_datos', 'prev_evento_consulta_saldo', 'prev_evento_login',
+        'prev_evento_pago_exitoso', 'prev_evento_pago_fallido', 'prev_evento_pago_iniciado',
+        'prev_evento_simulacion_credito', 'prev_evento_solicitud_soporte', 
+        'prev_evento_sesion_seg_tot', 'prev_evento_sesion_seg_avg',
+        'estrato'
+    }
+    
     for col in features_requeridos:
         if col not in df_input.columns:
-            df_input[col] = 0.0
-            
+            if col in numerical_cols:
+                df_input[col] = 0.0
+            elif col == 'tiene_producto_ahorro':
+                df_input[col] = False
+            else:
+                df_input[col] = 'Desconocido'
+                
     df_input = df_input[features_requeridos]
     
+    # Alinear variables categóricas con las categorías exactas del entrenamiento
+    pandas_categorical = getattr(model_artifact['model']._Booster, 'pandas_categorical', None)
+    if pandas_categorical:
+        # Las columnas categóricas en el dataset son exactamente las no-numéricas (excluyendo booleanos)
+        cat_cols = [c for c in features_requeridos if c not in numerical_cols and c != 'tiene_producto_ahorro']
+        for idx, col in enumerate(cat_cols):
+            if idx < len(pandas_categorical):
+                categories = pandas_categorical[idx]
+                # Convertir a string primero para evitar Pandas4Warning
+                df_input[col] = pd.Categorical(df_input[col].astype(str), categories=categories)
+    else:
+        # Fallback simple
+        for col in features_requeridos:
+            if col not in numerical_cols and col != 'tiene_producto_ahorro':
+                df_input[col] = df_input[col].astype('category')
+            
     model = model_artifact['model']
     proba = model.predict_proba(df_input)[0][1]
     

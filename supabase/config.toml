@@ -1,11 +1,5 @@
 # Configuración Supabase CLI
 # Documentación: https://supabase.com/docs/guides/cli/config
-#
-# Pasos para conectar:
-#   1. Crea un proyecto en https://app.supabase.com
-#   2. Reemplaza "your-project-ref" con el Project Reference ID (Settings → General)
-#   3. Ejecuta: supabase link --project-ref <project-ref>
-#   4. Ejecuta: supabase db push
 
 project_id = "iyklhflloqppliejlgzh"
 

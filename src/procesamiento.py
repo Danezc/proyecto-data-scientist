@@ -32,13 +32,18 @@ class DataCleaner:
             df_cleaned['score_externo'] = df_cleaned['score_externo'].fillna(median_score)
             logger.info("Imputados valores nulos en 'score_externo' utilizando la mediana.")
 
-        # Estandarización de ciudad
+        # Estandarización de ciudad (mapeo robusto para inconsistencias)
         if 'ciudad' in df_cleaned.columns:
-            # Reemplazar valores desnormalizados de Bogotá
-            bogota_variants = ['bogota', 'bogota d.c.', 'bogotá', 'bogotá d.c.', 'bogota dc', 'bogotá dc']
-            df_cleaned['ciudad'] = df_cleaned['ciudad'].astype(str).str.strip().str.lower()
-            df_cleaned['ciudad'] = df_cleaned['ciudad'].replace(bogota_variants, 'Bogotá')
-            logger.info("Ciudad estandarizada: variantes de Bogotá unificadas.")
+            ciudad_map = {
+                'bogot': 'Bogotá', 'bogota': 'Bogotá', 'bogota d.c.': 'Bogotá', 'bogotá d.c.': 'Bogotá', 'bogota dc': 'Bogotá', 'bogotá dc': 'Bogotá',
+                'medellin ': 'Medellín', 'medellin': 'Medellín', 'medellín': 'Medellín',
+                'barranquila': 'Barranquilla', 'barranquilla': 'Barranquilla',
+                'cali': 'Cali', 'ibagué': 'Ibagué', 'soacha': 'Soacha', 'villavicencio': 'Villavicencio',
+                'manizales': 'Manizales', 'pereira': 'Pereira', 'bucaramanga': 'Bucaramanga',
+                'cúcuta': 'Cúcuta', 'cartagena': 'Cartagena'
+            }
+            df_cleaned['ciudad'] = df_cleaned['ciudad'].astype(str).str.strip().str.lower().map(ciudad_map).fillna(df_cleaned['ciudad'].str.title())
+            logger.info("Ciudad estandarizada: variantes y errores ortográficos unificados.")
             
         # Corrección de outliers por límite lógico
         if 'edad' in df_cleaned.columns:
@@ -58,6 +63,11 @@ class DataCleaner:
         logger.info("Iniciando procesamiento y limpieza de tabla 'creditos'.")
         df_cleaned = df.copy()
         
+        # Imputa nulos en tipo de producto
+        if 'producto_credito' in df_cleaned.columns:
+            df_cleaned['producto_credito'] = df_cleaned['producto_credito'].fillna('Desconocido')
+            logger.info("Imputados valores nulos en 'producto_credito' como 'Desconocido'.")
+            
         # Elimina registros donde la llave base o el monto esté completamente ausente
         required_cols = ['credito_id', 'cliente_id', 'monto_credito']
         cols_present = [c for c in required_cols if c in df_cleaned.columns]
@@ -78,8 +88,12 @@ class DataCleaner:
         df_cleaned = df.copy()
         
         if 'monto_pago' in df_cleaned.columns:
-            # Los cobros nulos pueden significar 0 abono
             df_cleaned['monto_pago'] = df_cleaned['monto_pago'].fillna(0.0)
+        elif 'valor_pagado' in df_cleaned.columns:
+            df_cleaned['valor_pagado'] = df_cleaned['valor_pagado'].fillna(0.0)
+            
+        if 'medio_pago' in df_cleaned.columns:
+            df_cleaned['medio_pago'] = df_cleaned['medio_pago'].fillna('Desconocido')
             
         if 'dias_mora' in df_cleaned.columns:
             # Evita periodos de mora negativos (inconsistencias por pagos adelantados)

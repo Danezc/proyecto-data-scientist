@@ -11,7 +11,7 @@
 
 CREATE TABLE IF NOT EXISTS predicciones_riesgo (
     -- Identificadores
-    credito_id                  TEXT,
+    credito_id                  TEXT PRIMARY KEY,
     cliente_id                  TEXT,
 
     -- Datos del crédito

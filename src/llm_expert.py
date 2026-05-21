@@ -21,7 +21,7 @@ class FintechLLMExpert:
         """
         Inicializa cargando variables de entorno y el contexto serializado.
         """
-        api_key = os.getenv("NVIDIA_API_KEY", "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")
+        api_key = os.getenv("NVIDIA_API_KEY")
         self.client = OpenAI(
             base_url="https://integrate.api.nvidia.com/v1",
             api_key=api_key

@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
 # Determinar el directorio base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env", override=True)
 
 class Settings(BaseSettings):
     """
@@ -25,7 +27,7 @@ class Settings(BaseSettings):
     CUTOFF_DATE: str = "2026-04-30"
     
     # Base de Datos (PGVector / PostgreSQL)
-    DATABASE_URL: str = "postgresql://root:root@localhost:5432/tumipay_db"
+    DATABASE_URL: str = ""
     
     # Supabase
     SUPABASE_URL: str = ""
