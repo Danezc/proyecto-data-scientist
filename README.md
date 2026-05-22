@@ -41,7 +41,7 @@ Motor de riesgo de crédito de extremo a extremo para calculo de riesgo creditic
 
 ## 2. Inicio Rápido y Ejecución
 
-El flujo completo del proyecto está consolidado y orquestado en el cuaderno [01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb](01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb). Ese notebook es el punto único de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, exportar el mini data lake CSV para Power BI, indexar el RAG en PGVector y hacer preguntas al LLM.
+El flujo completo del proyecto está consolidado y orquestado en dos cuadernos: [01_Pipeline_Data_Model.ipynb](01_Pipeline_Data_Model.ipynb) y [02_Pipeline_RAG_LLM.ipynb](02_Pipeline_RAG_LLM.ipynb). Estos notebooks son los puntos únicos de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, exportar el mini data lake CSV para Power BI, indexar el RAG en PGVector y hacer preguntas al LLM.
 
 **Requisitos previos:** Python 3.11+, construir un archivo .env e insertar las variables de entorno según el ejemplo. 
 
@@ -59,8 +59,10 @@ python -m venv .venv
 source .venv/bin/activate        # En Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 4. Ejecutar el orquestador principal (pobla BD, entrena modelo, genera CSV, carga RAG y prueba el LLM)
-jupyter nbconvert --to notebook --execute --inplace 01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb
+# 4. Ejecutar el orquestador principal (pobla BD, entrena modelo, genera CSV)
+# y luego el de LLM (carga RAG y prueba el LLM)
+jupyter nbconvert --to notebook --execute --inplace 01_Pipeline_Data_Model.ipynb
+jupyter nbconvert --to notebook --execute --inplace 02_Pipeline_RAG_LLM.ipynb
 
 # 5. (Opcional) Levantar la API de scoring en vivo
 uvicorn src.main:app --reload
@@ -71,7 +73,8 @@ uvicorn src.main:app --reload
 ---
 
 ## 3. Arquitectura del Sistema
-├── 01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb       # Orquestador principal del pipeline completo
+├── 01_Pipeline_Data_Model.ipynb  # Pipeline 01: Ingesta, limpieza, ABT y Machine Learning
+├── 02_Pipeline_RAG_LLM.ipynb     # Pipeline 02: Indexación en PGVector e inferencia del RAG+LLM
 ├── src/
 │   ├── config.py                 # Configuración centralizada (pydantic-settings)
 │   ├── ingesta.py                # Carga de CSVs con tipado estricto y validación
@@ -112,7 +115,8 @@ graph LR
     B --> C[LightGBM\nROC-AUC 0.7522]
     C --> D[(PostgreSQL\nSupabase\npredicciones_riesgo)]
     B --> D
-    D --> E[Power BI\nDashboard Cartera]
+    D --> E[Mini Data Lake\nCSV Local]
+    E --> PBI[Power BI\nDashboard Cartera]
     D --> F[PGVector\nrag_conocimiento\n1538 chunks]
     F --> G[Agente RAG\nLangGraph]
     G --> H[NVIDIA NIM\nllama-3.1-8b]
@@ -149,10 +153,11 @@ graph LR
 |---|---|
 | `1_eda_y_calidad.ipynb` | EDA y diagnóstico de calidad de datos. Detecta nulos, outliers e inconsistencias documentadas en el README §4. |
 | `2_modelado_y_evaluacion.ipynb` | Iteración de modelado: definición del target, splits, entrenamiento y métricas. |
-| `01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb` | Orquestador principal de entrega: ETL → vista BI → ABT → modelo → predicciones → RAG → pregunta al LLM. |
-| `00_carga_base_supabase.ipynb` | Auxiliar de validación de carga raw. No es necesario para ejecutar la entrega si se corre el master. |
-| `01_powerbi_predicciones.ipynb` | Auxiliar de validación de predicciones. No es necesario para ejecutar la entrega si se corre el master. |
-| `02_aporte_adicional_rag_llm.ipynb` | Auxiliar de demo RAG. El master ya contiene una celda editable para hacer preguntas al LLM. |
+| `01_Pipeline_Data_Model.ipynb` | Orquestador principal de datos: ETL → vista BI → ABT → modelo → predicciones → data lake CSV. |
+| `02_Pipeline_RAG_LLM.ipynb` | Orquestador del servicio cognitivo: Indexación en PGVector de documentos → pregunta al LLM. |
+| `00_carga_base_supabase.ipynb` | Auxiliar de validación de carga raw. No es necesario para ejecutar la entrega. |
+| `01_powerbi_predicciones.ipynb` | Auxiliar de validación de predicciones. No es necesario para ejecutar la entrega. |
+| `02_aporte_adicional_rag_llm.ipynb` | Auxiliar de demo RAG. |
 
 ---
 
@@ -272,7 +277,7 @@ Dashboard interactivo con dos módulos orientados a perfiles distintos del negoc
 - **Módulo Descriptivo**: KPIs de cartera (mora por segmento, distribución geográfica, concentración por producto), conectado a `fact_creditos`, `dim_cliente`, `dim_producto_credito`, `dim_tiempo` y `perfil_descriptivo_cliente`.
 - **Módulo Predictivo**: Distribución de probabilidades de mora del modelo, segmentación de riesgo y alertas de originación, conectado a `predicciones_riesgo.CSV`.
 
-> Los datos locales del dashboard se regeneran ejecutando [01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb](01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb). El mini data lake replica la semántica de `abt_analitica_riesgo`, `predicciones_riesgo`, dimensiones y hechos usados en Supabase.
+> Los datos locales del dashboard se regeneran ejecutando [01_Pipeline_Data_Model.ipynb](01_Pipeline_Data_Model.ipynb). El mini data lake replica la semántica de `abt_analitica_riesgo`, `predicciones_riesgo`, dimensiones y hechos usados en Supabase.
 
 ![Dashboard — Módulo Descriptivo](dashboard/capturas/descriptiva.png)
 ![Dashboard — Módulo Predictivo](dashboard/capturas/predictiva.png)
