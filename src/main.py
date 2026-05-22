@@ -1,12 +1,11 @@
 import logging
 import joblib
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from pathlib import Path
 
-from src.llm_expert import FintechLLMExpert, QueryRequest
 from src.config import settings
+from src.rag_agent import RAGAgentPipeline
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -33,14 +32,18 @@ class PredictionResponse(BaseModel):
     score_riesgo_mora: float
     decision: str
 
+
+class QueryRequest(BaseModel):
+    question: str
+
 # Variable global para cachear el modelo en memoria
 model_artifact = None
-llm_expert = None
+rag_agent = None
 
 @app.on_event("startup")
 def load_assets():
     """Carga los modelos en memoria al iniciar la API para mínima latencia."""
-    global model_artifact, llm_expert
+    global model_artifact, rag_agent
     model_path = settings.MODELS_DIR / "modelo_mora.pkl"
     
     try:
@@ -51,9 +54,13 @@ def load_assets():
         model_artifact = None
         
     try:
-        llm_expert = FintechLLMExpert()
+        rag_agent = RAGAgentPipeline(
+            db_connection=settings.DATABASE_URL,
+            nvidia_api_key=settings.NVIDIA_API_KEY,
+        )
+        logger.info("Agente RAG cargado en memoria exitosamente.")
     except Exception as e:
-        logger.warning(f"Advertencia al instanciar LLM Expert: {e}")
+        logger.warning(f"Advertencia al instanciar agente RAG: {e}")
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict_risk(data: PredictionRequest):
@@ -122,11 +129,11 @@ def predict_risk(data: PredictionRequest):
 @app.post("/ask-analyst")
 def ask_analyst(query: QueryRequest):
     """
-    Consulta al agente LLM sobre temas de analítica y negocio.
-    Recibe un JSON request con el campo explícito 'question'.
+    Consulta al agente RAG + LLM sobre analítica de riesgo y negocio.
+    Recupera contexto desde PGVector y genera la respuesta con NVIDIA NIM.
     """
-    if not llm_expert:
-        raise HTTPException(status_code=503, detail="El servicio de LLM no está disponible en este momento.")
+    if not rag_agent:
+        raise HTTPException(status_code=503, detail="El agente RAG no está disponible en este momento.")
         
-    respuesta = llm_expert.generate_response(query.question)
+    respuesta = "".join(rag_agent.stream_query(query.question)).strip()
     return {"question": query.question, "respuesta": respuesta}

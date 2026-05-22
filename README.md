@@ -4,7 +4,6 @@
 ![LightGBM](https://img.shields.io/badge/LightGBM-4.6.0-orange.svg)
 ![LangGraph](https://img.shields.io/badge/LangGraph-RAG-purple.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-336791.svg)
-![Docker](https://img.shields.io/badge/docker-compose-0db7ed.svg)
 ![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.7635-brightgreen.svg)
 
 Motor de riesgo de crédito de extremo a extremo para calculo de riesgo crediticio. El sistema integra un pipeline de datos completo (ETL → Feature Engineering → ML → API), un dashboard de cartera en Power BI y un agente conversacional RAG sobre base de conocimiento financiero. La arquitectura, el diseño analítico y las decisiones metodológicas son de autoría propia; las herramientas de IA generativa se utilizaron como aceleradoras del desarrollo de código, sin sustituir el criterio técnico.
@@ -42,7 +41,7 @@ Motor de riesgo de crédito de extremo a extremo para calculo de riesgo creditic
 
 ## 2. Inicio Rápido y Ejecución
 
-El flujo completo del proyecto (ETL, Feature Engineering, Modelado y Exportación a DB) está consolidado y orquestado en el cuaderno [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). 
+El flujo completo del proyecto está consolidado y orquestado en el cuaderno [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). Ese notebook es el punto único de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, indexar el RAG en PGVector y hacer preguntas al LLM.
 
 **Requisitos previos:** Python 3.11+, construir un archivo .env e insertar las variables de entorno según el ejemplo. 
 
@@ -60,7 +59,7 @@ python -m venv .venv
 source .venv/bin/activate        # En Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 4. Ejecutar el orquestador principal (poblará la BD y entrenará el modelo)
+# 4. Ejecutar el orquestador principal (pobla BD, entrena modelo, carga RAG y prueba el LLM)
 jupyter nbconvert --to notebook --execute --inplace 0_Master_Pipeline.ipynb
 
 # 5. (Opcional) Levantar la API de scoring en vivo
@@ -88,12 +87,11 @@ uvicorn src.main:app --reload
 ├── sql/
 │   └── transformaciones.sql      # Transformaciones analíticas, vistas y ABT en SQL puro
 ├── notebooks/
-│   ├── 0_Master_Pipeline.ipynb         # (espejo) Orquestador interactivo
-│   ├── 00_carga_base_supabase.ipynb    # Carga de CSVs raw a Supabase (UPSERT idempotente)
-│   ├── 01_powerbi_predicciones.ipynb   # Construye ABT, entrena modelo y carga predicciones_riesgo
+│   ├── 00_carga_base_supabase.ipynb    # Notebook auxiliar de validación de carga raw
+│   ├── 01_powerbi_predicciones.ipynb   # Notebook auxiliar de validación de predicciones
 │   ├── 1_eda_y_calidad.ipynb           # Análisis exploratorio y calidad de datos
 │   ├── 2_modelado_y_evaluacion.ipynb   # Iteraciones de modelado y métricas
-│   └── 02_aporte_adicional_rag_llm.ipynb # Demo interactivo del agente RAG
+│   └── 02_aporte_adicional_rag_llm.ipynb # Notebook auxiliar de demo RAG
 ├── docs/
 │   ├── diccionario_datos.md      # Diccionario de campos por tabla y reglas anti-leakage
 │   └── analisis_arquitectura_modelado.md
@@ -104,7 +102,6 @@ uvicorn src.main:app --reload
 │   └── processed/                # ABT en Parquet (generada por el pipeline — ver data/processed/README.md)
 ├── models/                       # modelo_mora.pkl serializado (generado por el pipeline — ver models/README.md)
 ├── supabase/                     # Migraciones DDL para Supabase
-├── docker-compose.yml            # PostgreSQL 16 + pgvector en contenedor local
 └── .env.example                  # Plantilla de variables de entorno
 ```
 
@@ -135,7 +132,7 @@ graph LR
 | `consolidacion.py` | Orquesta el `DataConsolidator`: cruza las cuatro tablas, agrega métricas de comportamiento de pago por crédito, filtra eventos de app previos al desembolso (anti-leakage temporal) y construye la ABT final con 42 features. |
 | `train_mora.py` | Pipeline ML completo: define el target `es_moroso` con corte temporal (`fecha_vencimiento ≤ CUTOFF_DATE`, `dias_mora > 30`), realiza split estratificado, entrena `LGBMClassifier` con early stopping, evalúa con ROC-AUC y exporta el modelo a `models/modelo_mora.pkl`. Excluye explícitamente variables post-desembolso. |
 | `rag_agent.py` | Implementa el agente conversacional: usa `LangGraph` para el grafo de razonamiento, `PGVector` como retriever semántico y `NVIDIA NIM` (llama-3.1-8b) como LLM generativo. Responde en español sobre portafolio, políticas de cobro y fichas de clientes. |
-| `main.py` | API REST con `FastAPI`: expone `POST /score` que recibe features de un crédito y devuelve la probabilidad de mora predicha por el modelo serializado. Incluye middleware de validación y manejo de errores. |
+| `main.py` | API REST con `FastAPI`: expone `POST /predict` para scoring y `POST /ask-analyst` para consultas RAG + LLM sobre el portafolio. |
 
 ### `scripts/` — Operaciones de Datos
 
@@ -151,10 +148,10 @@ graph LR
 |---|---|
 | `1_eda_y_calidad.ipynb` | EDA y diagnóstico de calidad de datos. Detecta nulos, outliers e inconsistencias documentadas en el README §4. |
 | `2_modelado_y_evaluacion.ipynb` | Iteración de modelado: definición del target, splits, entrenamiento y métricas. |
-| `00_carga_base_supabase.ipynb` | Carga reproducible de las cuatro tablas raw a Supabase con `UPSERT`. Bloquea conexiones a `localhost` para evitar cargas accidentales contra el Docker local. |
-| `01_powerbi_predicciones.ipynb` | Construye la ABT, entrena el modelo, genera `predicciones_riesgo` y la carga a Supabase para consumo desde Power BI. |
-| `02_aporte_adicional_rag_llm.ipynb` | Demo interactiva del agente RAG. |
-| `0_Master_Pipeline.ipynb` | Orquesta el flujo completo (ETL → ABT → modelo → predicciones → RAG).
+| `0_Master_Pipeline.ipynb` | Orquestador principal de entrega: ETL → vista BI → ABT → modelo → predicciones → RAG → pregunta al LLM. |
+| `00_carga_base_supabase.ipynb` | Auxiliar de validación de carga raw. No es necesario para ejecutar la entrega si se corre el master. |
+| `01_powerbi_predicciones.ipynb` | Auxiliar de validación de predicciones. No es necesario para ejecutar la entrega si se corre el master. |
+| `02_aporte_adicional_rag_llm.ipynb` | Auxiliar de demo RAG. El master ya contiene una celda editable para hacer preguntas al LLM. |
 
 ---
 
@@ -274,7 +271,7 @@ Dashboard interactivo con dos módulos orientados a perfiles distintos del negoc
 - **Módulo Descriptivo**: KPIs de cartera (mora por segmento, distribución geográfica, concentración por producto), conectado a `raw_creditos` y `v_clientes_bi`.
 - **Módulo Predictivo**: Distribución de probabilidades de mora del modelo, segmentación de riesgo y alertas de originación, conectado a `predicciones_riesgo`.
 
-> El archivo `.pbix` se gestiona fuera del repositorio por tamaño. Las capturas funcionales del dashboard quedan en [dashboard/capturas/](dashboard/capturas/) como evidencia reproducible, y los datos que lo alimentan se regeneran ejecutando [notebooks/01_powerbi_predicciones.ipynb](notebooks/01_powerbi_predicciones.ipynb).
+> El archivo `.pbix` se gestiona fuera del repositorio por tamaño. Las capturas funcionales del dashboard quedan en [dashboard/capturas/](dashboard/capturas/) como evidencia reproducible, y los datos que lo alimentan se regeneran ejecutando [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb).
 
 ![Dashboard — Módulo Descriptivo](dashboard/capturas/descriptiva.png)
 ![Dashboard — Módulo Predictivo](dashboard/capturas/predictiva.png)

@@ -16,7 +16,7 @@ def create_supabase_engine(database_url: str):
         raise ValueError("DATABASE_URL no está configurado.")
     if parsed.hostname in LOCAL_HOSTS:
         raise ValueError(
-            f"DATABASE_URL apunta a '{parsed.hostname}'. La carga a Docker/local está bloqueada."
+            f"DATABASE_URL apunta a '{parsed.hostname}'. La carga local está bloqueada para esta entrega."
         )
     return create_engine(database_url, pool_pre_ping=True)
 
