@@ -1,6 +1,6 @@
-﻿producto_credito_id;producto_credito;categoria_producto
-1;Avance de nómina;Avance de nómina
-2;Crédito consumo digital;Crédito consumo digital
-3;Crédito libre inversión;Crédito libre inversión
-4;Desconocido;Desconocido
-5;Microcrédito;Microcrédito
+﻿producto_credito_id,producto_credito,categoria_producto
+1,Avance de nómina,Avance de nómina
+2,Crédito consumo digital,Crédito consumo digital
+3,Crédito libre inversión,Crédito libre inversión
+4,Desconocido,Desconocido
+5,Microcrédito,Microcrédito
