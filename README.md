@@ -4,7 +4,7 @@
 ![LightGBM](https://img.shields.io/badge/LightGBM-4.6.0-orange.svg)
 ![LangGraph](https://img.shields.io/badge/LangGraph-RAG-purple.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-336791.svg)
-![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.7635-brightgreen.svg)
+![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.7522-brightgreen.svg)
 
 Motor de riesgo de crédito de extremo a extremo para calculo de riesgo crediticio. El sistema integra un pipeline de datos completo (ETL → Feature Engineering → ML → API), un dashboard de cartera en Power BI y un agente conversacional RAG sobre base de conocimiento financiero. La arquitectura, el diseño analítico y las decisiones metodológicas son de autoría propia; las herramientas de IA generativa se utilizaron como aceleradoras del desarrollo de código, sin sustituir el criterio técnico.
 
@@ -32,7 +32,7 @@ Motor de riesgo de crédito de extremo a extremo para calculo de riesgo creditic
 |---|---|---|
 | **Datos** | ETL + ABT | Consolida 4 fuentes raw en una ABT de 42 features con ingeniería anti-leakage. |
 | **SQL** | Transformaciones & Analytics | CTEs, window functions y vistas analíticas para BI y auditoría de cartera. |
-| **Machine Learning** | LightGBM — Motor de Originación | Predice probabilidad de mora con ROC-AUC de **0.7635**, libre de fuga de información. |
+| **Machine Learning** | LightGBM — Motor de Originación | Predice probabilidad de mora con ROC-AUC de **0.7522**, libre de fuga de información. |
 | **API** | FastAPI — Scoring Endpoint | Expone inferencia en tiempo real para integración con sistemas transaccionales. |
 | **Visualización** | Dashboard Power BI | Monitor de riesgo de cartera con módulos descriptivo y predictivo. |
 | **IA Conversacional** | Agente RAG (LangGraph + PGVector) | Consultas en lenguaje natural sobre portafolio, políticas y fichas de clientes. |
@@ -41,7 +41,7 @@ Motor de riesgo de crédito de extremo a extremo para calculo de riesgo creditic
 
 ## 2. Inicio Rápido y Ejecución
 
-El flujo completo del proyecto está consolidado y orquestado en el cuaderno [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). Ese notebook es el punto único de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, indexar el RAG en PGVector y hacer preguntas al LLM.
+El flujo completo del proyecto está consolidado y orquestado en el cuaderno [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). Ese notebook es el punto único de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, exportar el mini data lake Parquet para Power BI, indexar el RAG en PGVector y hacer preguntas al LLM.
 
 **Requisitos previos:** Python 3.11+, construir un archivo .env e insertar las variables de entorno según el ejemplo. 
 
@@ -59,7 +59,7 @@ python -m venv .venv
 source .venv/bin/activate        # En Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 4. Ejecutar el orquestador principal (pobla BD, entrena modelo, carga RAG y prueba el LLM)
+# 4. Ejecutar el orquestador principal (pobla BD, entrena modelo, genera Parquet, carga RAG y prueba el LLM)
 jupyter nbconvert --to notebook --execute --inplace 0_Master_Pipeline.ipynb
 
 # 5. (Opcional) Levantar la API de scoring en vivo
@@ -82,7 +82,7 @@ uvicorn src.main:app --reload
 │   └── main.py                   # FastAPI: endpoints de scoring e inferencia
 ├── scripts/
 │   ├── load_raw_supabase.py      # Carga los CSVs raw a Supabase (PostgreSQL)
-│   ├── load_powerbi_predictions.py # Escribe predicciones del modelo a la tabla de BI
+│   ├── load_powerbi_predictions.py # Escribe predicciones y genera mini data lake Parquet
 │   └── populate_rag.py           # Indexa chunks de conocimiento en el vector store
 ├── sql/
 │   └── transformaciones.sql      # Transformaciones analíticas, vistas y ABT en SQL puro
@@ -96,10 +96,11 @@ uvicorn src.main:app --reload
 │   ├── diccionario_datos.md      # Diccionario de campos por tabla y reglas anti-leakage
 │   └── analisis_arquitectura_modelado.md
 ├── dashboard/
-│   └── capturas/                 # Capturas del dashboard Power BI (.pbix gestionado fuera del repo)
+│   ├── capturas/                 # Capturas del dashboard Power BI
+│   └── *.pbix                    # Dashboard conectado a data/processed/powerbi
 ├── data/
 │   ├── raw/                      # Datos originales entregados con la prueba
-│   └── processed/                # ABT en Parquet (generada por el pipeline — ver data/processed/README.md)
+│   └── processed/                # ABT y mini data lake Power BI en Parquet
 ├── models/                       # modelo_mora.pkl serializado (generado por el pipeline — ver models/README.md)
 ├── supabase/                     # Migraciones DDL para Supabase
 └── .env.example                  # Plantilla de variables de entorno
@@ -108,7 +109,7 @@ uvicorn src.main:app --reload
 ```mermaid
 graph LR
     A[CSV raw\nclientes · creditos\npagos · eventos_app] --> B[ETL / ABT\n42 features]
-    B --> C[LightGBM\nROC-AUC 0.7635]
+    B --> C[LightGBM\nROC-AUC 0.7522]
     C --> D[(PostgreSQL\nSupabase\npredicciones_riesgo)]
     B --> D
     D --> E[Power BI\nDashboard Cartera]
@@ -139,7 +140,7 @@ graph LR
 | Script | Responsabilidad |
 |---|---|
 | `load_raw_supabase.py` | Lee los CSVs de `data/raw/` y los carga (upsert) en las tablas raw de Supabase (`raw_clientes`, `raw_creditos`, `raw_pagos`, `raw_eventos_app`) usando `SQLAlchemy`. Idempotente: puede ejecutarse múltiples veces sin duplicar registros. |
-| `load_powerbi_predictions.py` | Toma el ABT procesado y las predicciones del modelo, y escribe el resultado a la tabla `predicciones_riesgo` en PostgreSQL para consumo directo desde Power BI via DirectQuery. |
+| `load_powerbi_predictions.py` | Toma el ABT procesado y las predicciones del modelo, escribe `predicciones_riesgo` en PostgreSQL y exporta el mini data lake local en `data/processed/powerbi/` para consumo offline desde Power BI. |
 | `populate_rag.py` | Genera chunks de texto a partir de fichas de clientes, estadísticas de cartera y documentos de política. Los embeds con `intfloat/multilingual-e5-small` y los indexa en `PGVector` (`vector_store`). |
 
 ### `notebooks/` — Cuadernos del flujo analítico
@@ -170,12 +171,12 @@ es_moroso = 1  si  MAX(dias_mora) > 30
 
 ### B. Mitigación de Data Leakage
 
-La variable `estado_credito_operativo` (valores: *Activo, Finalizado, Mora moderada, Mora severa*) es conocida **después** del desembolso, no al momento de originar el crédito. Su inclusión en el modelo producía un ROC-AUC ficticio de `0.9844` por filtración directa del target. Esta variable y `email_hash` fueron excluidas estrictamente del feature set. El resultado es un **ROC-AUC real de 0.7635**, sólido y reproducible en producción.
+La variable `estado_credito_operativo` (valores: *Activo, Finalizado, Mora moderada, Mora severa*) es conocida **después** del desembolso, no al momento de originar el crédito. Su inclusión en el modelo producía un ROC-AUC ficticio de `0.9844` por filtración directa del target. Esta variable y `email_hash` fueron excluidas estrictamente del feature set. El resultado es un **ROC-AUC real de 0.7522**, sólido y reproducible en producción.
 
 | Escenario | ROC-AUC | Accuracy | Utilidad en producción |
 |---|---|---|---|
 | **Con leakage** (`estado_credito_operativo` incluido) | 0.9844 | 97% | Nula — aprende el target directamente |
-| **Sin leakage** (modelo actual) | **0.7635** | **71%** | **Alta — predice en originación real** |
+| **Sin leakage** (modelo actual) | **0.7522** | **73%** | **Alta — predice en originación real** |
 
 ### C. Calidad y Limpieza de Datos
 
@@ -203,8 +204,8 @@ El modelo es un `LGBMClassifier` entrenado con split temporal estratificado (80/
 
 | Métrica | Modelo actual (leakage-free) |
 |---|---|
-| **ROC-AUC (Test)** | **0.7635** |
-| **Accuracy** | **71%** |
+| **ROC-AUC (Test)** | **0.7522** |
+| **Accuracy** | **73%** |
 | **Tasa de mora evaluada** | **27.2%** (416 / 1.527 créditos) |
 
 ### Distribución de Mora por Rango de Monto de Crédito
@@ -223,11 +224,11 @@ El modelo es un `LGBMClassifier` entrenado con split temporal estratificado (80/
 
 ### Top Variables más Importantes (Feature Importance — LightGBM)
 
-1. **`score_externo` (126 pts)** — Historial en centrales de riesgo: predictor dominante.
-2. **`relacion_cuota_ingreso` (92 pts)** — Carga financiera del crédito sobre los ingresos.
-3. **`mes_desembolso` (81 pts)** — Estacionalidad de la colocación de cartera.
-4. **`ingreso_mensual_estimado` (71 pts)** — Capacidad de pago del solicitante.
-5. **`tasa_interes_mensual` (66 pts)** — Efecto de selección adversa: tasas altas correlacionan con mayor riesgo.
+1. **`score_externo` (127 pts)** — Historial en centrales de riesgo: predictor dominante.
+2. **`prev_evento_sesion_seg_tot` (88 pts)** — Intensidad de uso digital previa al desembolso.
+3. **`relacion_cuota_ingreso` (70 pts)** — Carga financiera del crédito sobre los ingresos.
+4. **`mes_desembolso` (63 pts)** — Estacionalidad de la colocación de cartera.
+5. **`ingreso_mensual_estimado` (56 pts)** — Capacidad de pago del solicitante.
 
 ---
 
@@ -266,12 +267,12 @@ El archivo [sql/transformaciones.sql](sql/transformaciones.sql) contiene todas l
 
 ## 9. Dashboard de Power BI
 
-Dashboard interactivo con dos módulos orientados a perfiles distintos del negocio:
+Dashboard interactivo con dos módulos orientados a perfiles distintos del negocio. Para que el reclutador pueda abrirlo sin configurar ODBC ni credenciales, el `.pbix` se conecta a los Parquet locales de [data/processed/powerbi/](data/processed/powerbi/).
 
-- **Módulo Descriptivo**: KPIs de cartera (mora por segmento, distribución geográfica, concentración por producto), conectado a `raw_creditos` y `v_clientes_bi`.
-- **Módulo Predictivo**: Distribución de probabilidades de mora del modelo, segmentación de riesgo y alertas de originación, conectado a `predicciones_riesgo`.
+- **Módulo Descriptivo**: KPIs de cartera (mora por segmento, distribución geográfica, concentración por producto), conectado a `fact_creditos`, `dim_cliente`, `dim_producto_credito`, `dim_tiempo` y `perfil_descriptivo_cliente`.
+- **Módulo Predictivo**: Distribución de probabilidades de mora del modelo, segmentación de riesgo y alertas de originación, conectado a `predicciones_riesgo.parquet`.
 
-> El archivo `.pbix` se gestiona fuera del repositorio por tamaño. Las capturas funcionales del dashboard quedan en [dashboard/capturas/](dashboard/capturas/) como evidencia reproducible, y los datos que lo alimentan se regeneran ejecutando [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb).
+> Los datos locales del dashboard se regeneran ejecutando [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). El mini data lake replica la semántica de `abt_analitica_riesgo`, `predicciones_riesgo`, dimensiones y hechos usados en Supabase.
 
 ![Dashboard — Módulo Descriptivo](dashboard/capturas/descriptiva.png)
 ![Dashboard — Módulo Predictivo](dashboard/capturas/predictiva.png)

@@ -1,0 +1,13 @@
+{
+  "descripcion": "Mini data lake local para Power BI. Regenerado por 0_Master_Pipeline.ipynb.",
+  "formato": "parquet",
+  "tablas": {
+    "abt_analitica_riesgo": 1527,
+    "predicciones_riesgo": 1527,
+    "dim_cliente": 1128,
+    "dim_producto_credito": 5,
+    "dim_tiempo": 1150,
+    "fact_creditos": 1527,
+    "perfil_descriptivo_cliente": 1128
+  }
+}

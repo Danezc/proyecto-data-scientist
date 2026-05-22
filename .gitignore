@@ -28,6 +28,10 @@ build/
 !/data/raw/.gitkeep
 /data/processed/*
 !/data/processed/.gitkeep
+!/data/processed/README.md
+!/data/processed/powerbi/
+!/data/processed/powerbi/*.parquet
+!/data/processed/powerbi/manifest.json
 
 # ── Modelos entrenados (binarios grandes) ────────────────────────────────────
 /models/*
@@ -35,6 +39,7 @@ build/
 
 # ── Power BI (binarios no versionables, pueden contener datos cacheados) ─────
 *.pbix
+!/dashboard/**/*.pbix
 # ✅ Los archivos .pbit (plantilla sin datos) sí se pueden versionar
 
 # ── Sistema operativo ─────────────────────────────────────────────────────────

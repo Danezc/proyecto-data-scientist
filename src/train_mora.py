@@ -118,7 +118,7 @@ class MoraModelTrainer:
         self.export_model(model, list(X_train.columns))
 
 if __name__ == "__main__":
-    abt_path = settings.DATA_PROCESSED_DIR / "abt.csv"
+    abt_path = settings.DATA_PROCESSED_DIR / "abt.parquet"
     model_path = settings.MODELS_DIR / "modelo_mora.pkl"
     trainer = MoraModelTrainer(abt_path, model_path)
     trainer.run_pipeline()

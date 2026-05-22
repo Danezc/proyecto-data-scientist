@@ -162,7 +162,7 @@ def build_portfolio_summary_docs(df: pd.DataFrame) -> list[Document]:
         f"  • Portafolio sano: ${monto_tot - monto_mor:,.0f} ({1-tasa_mora:.1%})\n\n"
         f"MODELO PREDICTIVO:\n"
         f"  • Algoritmo: LightGBM (Gradient Boosting)\n"
-        f"  • ROC-AUC: 0.9844  |  Accuracy: 97%\n"
+        f"  • ROC-AUC: 0.7522  |  Accuracy: 73%\n"
         f"  • Variable objetivo: es_moroso (≥1 cuota con mora >30 días)\n\n"
         f"DESGLOSE POR PRODUCTO:\n{prod_txt}\n\n"
         f"DESGLOSE POR CANAL DE ORIGINACIÓN:\n{canal_txt}\n\n"

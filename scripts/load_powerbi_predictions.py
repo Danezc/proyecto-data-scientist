@@ -9,6 +9,7 @@ from src.config import settings  # noqa: E402
 from src.consolidacion import DataConsolidator  # noqa: E402
 from src.db_utils import create_supabase_engine, get_database_host, table_counts, upsert_dataframe  # noqa: E402
 from src.ingesta import DataIngestor  # noqa: E402
+from src.powerbi_datalake import export_powerbi_datalake  # noqa: E402
 from src.procesamiento import DataCleaner  # noqa: E402
 from src.train_mora import MoraModelTrainer  # noqa: E402
 
@@ -24,12 +25,13 @@ def main() -> None:
     df_clientes = cleaner.clean_clientes(dfs["clientes"])
     df_creditos = cleaner.clean_creditos(dfs["creditos"])
     df_pagos = cleaner.clean_pagos(dfs["pagos"])
+    df_eventos = dfs["eventos"].copy()
 
     settings.DATA_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     settings.MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     consolidator = DataConsolidator(cutoff_date=settings.CUTOFF_DATE)
-    abt = consolidator.build_analytical_base_table(df_clientes, df_creditos, df_pagos)
+    abt = consolidator.build_analytical_base_table(df_clientes, df_creditos, df_pagos, df_eventos)
     abt.to_parquet(settings.DATA_PROCESSED_DIR / "abt.parquet", index=False)
 
     trainer = MoraModelTrainer(
@@ -47,6 +49,15 @@ def main() -> None:
 
     abt["probabilidad_mora"] = model.predict_proba(X_full)[:, 1]
     abt["prediccion_mora"] = model.predict(X_full)
+
+    lake_counts = export_powerbi_datalake(
+        abt=abt.drop(columns=["probabilidad_mora", "prediccion_mora"]),
+        predicciones=abt,
+        output_dir=settings.DATA_PROCESSED_DIR / "powerbi",
+    )
+    print("Mini data lake Power BI generado en data/processed/powerbi:")
+    for table_name, row_count in lake_counts.items():
+        print(f"  {table_name}: {row_count} filas")
 
     affected = upsert_dataframe(abt, engine, "predicciones_riesgo", ["credito_id"])
     counts = table_counts(engine, ["predicciones_riesgo"])
