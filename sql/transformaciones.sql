@@ -100,6 +100,35 @@ eventos_previos AS (
     GROUP BY cr.credito_id
 )
 
+-- ─────────────────────────────────────────────────────────────────────────
+-- 2. VISTA PARA POWER BI: CLIENTES CON INGRESO WINSORIZDO (anti-outlier)
+-- ─────────────────────────────────────────────────────────────────────────
+-- El registro con ingreso_mensual_estimado ≈ 120.000.000 en estrato ≤ 3
+-- es un error de captura confirmado (inconsistencia socioeconómica).
+-- Se capea al P99 dinámico para visualización, preservando raw intacto.
+-- Flags: 'error_captura' → estrato ≤ 3 y supera P99
+--         'outlier_real'  → supera P99 pero estrato ≥ 4
+--         'normal'        → dentro del rango esperado
+
+CREATE OR REPLACE VIEW v_clientes_bi AS
+WITH p AS (
+    SELECT percentile_cont(0.99) WITHIN GROUP (ORDER BY ingreso_mensual_estimado) AS p99
+    FROM raw_clientes
+    WHERE ingreso_mensual_estimado IS NOT NULL
+)
+SELECT
+    c.*,
+    LEAST(c.ingreso_mensual_estimado, (SELECT p99 FROM p)) AS ingreso_mensual_bi,
+    CASE
+        WHEN c.ingreso_mensual_estimado > (SELECT p99 FROM p) AND COALESCE(c.estrato, 4) <= 3
+            THEN 'error_captura'
+        WHEN c.ingreso_mensual_estimado > (SELECT p99 FROM p)
+            THEN 'outlier_real'
+        ELSE 'normal'
+    END AS flag_ingreso
+FROM raw_clientes c;
+
+
 -- E. Consolidación de la ABT final
 SELECT 
     c.credito_id,

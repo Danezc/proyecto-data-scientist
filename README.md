@@ -1,4 +1,4 @@
-# Risk Engine & Financial AI Advisor
+# TumiPay — Risk Engine & Financial AI Advisor
 
 ![Python](https://img.shields.io/badge/python-3.14-blue.svg)
 ![LightGBM](https://img.shields.io/badge/LightGBM-4.6.0-orange.svg)
@@ -7,203 +7,318 @@
 ![Docker](https://img.shields.io/badge/docker-compose-0db7ed.svg)
 ![ROC-AUC](https://img.shields.io/badge/ROC--AUC-0.7635-brightgreen.svg)
 
-> **Auditoría y Corrección de Arquitectura:** En esta entrega se detectaron y corrigieron problemas metodológicos graves en el pipeline original, incluyendo una definición incorrecta del target (pérdida de morosos activos por filtro nulo de pagos) y fuga de información masiva (data leakage) al incluir variables operativas post-desembolso (`estado_credito_operativo`). El modelo actual representa un motor de originación robusto y alineado a las mejores prácticas de la industria de riesgo de crédito.
+Motor de riesgo de crédito de extremo a extremo para calculo de riesgo crediticio. El sistema integra un pipeline de datos completo (ETL → Feature Engineering → ML → API), un dashboard de cartera en Power BI y un agente conversacional RAG sobre base de conocimiento financiero. La arquitectura, el diseño analítico y las decisiones metodológicas son de autoría propia; las herramientas de IA generativa se utilizaron como aceleradoras del desarrollo de código, sin sustituir el criterio técnico.
 
 ## 📋 Tabla de Contenidos
 
 1. [Resumen Ejecutivo](#1-resumen-ejecutivo)
-2. [Estructura del Repositorio](#2-estructura-del-repositorio)
-3. [Auditoría de Calidad y Fuga de Información](#3-auditoría-de-calidad-y-fuga-de-información)
-4. [Modelo de Riesgo — Resultados](#4-modelo-de-riesgo--resultados)
-5. [Agente RAG Financiero](#5-agente-rag-financiero)
-6. [SQL y Capa de Transformación de Datos](#6-sql-y-capa-de-transformación-de-datos)
-7. [Dashboard de Power BI](#7-dashboard-de-power-bi)
-8. [Inicio Rápido](#8-inicio-rápido)
-9. [Uso de Inteligencia Artificial (Declaración)](#9-uso-de-inteligencia-artificial-declaración)
+2. [Inicio Rápido y Ejecución](#2-inicio-rápido-y-ejecución)
+3. [Arquitectura del Sistema](#3-arquitectura-del-sistema)
+4. [Descripción de Módulos y Scripts](#4-descripción-de-módulos-y-scripts)
+5. [Ingeniería de Datos y Calidad](#5-ingeniería-de-datos-y-calidad)
+6. [Modelo de Riesgo — Resultados](#6-modelo-de-riesgo--resultados)
+7. [Agente RAG Financiero](#7-agente-rag-financiero)
+8. [SQL y Capa Analítica](#8-sql-y-capa-analítica)
+9. [Dashboard de Power BI](#9-dashboard-de-power-bi)
+10. [Limitaciones y Mejoras](#10-limitaciones-y-mejoras)
+11. [Prácticas de Desarrollo y Uso de IA](#11-prácticas-de-desarrollo-y-uso-de-ia)
 
 ---
 
 ## 1. Resumen Ejecutivo
 
-Este repositorio es el núcleo analítico de **TumiPay**, una fintech de crédito de consumo. El sistema integra de extremo a extremo las siguientes capas:
+**TumiPay Risk Engine** es un sistema de scoring crediticio diseñado para operar en el momento de originación — antes del desembolso. A partir de cuatro fuentes de datos operativas (`clientes`, `creditos`, `pagos`, `eventos_app`), el sistema construye una Analytical Base Table (ABT) con 42 variables, entrena un modelo LightGBM libre de data leakage y expone predicciones en tiempo real a través de una API REST. Una capa de Business Intelligence y un agente conversacional complementan el motor de riesgo para el equipo de negocio.
 
 | Capa | Componente | Descripción |
 |---|---|---|
-| **Datos** | ETL + ABT (Analytical Base Table) | Consolidación de 4 fuentes raw (`clientes`, `creditos`, `pagos`, `eventos_app`) en una ABT limpia con 42 características. |
-| **SQL** | SQL Transformations & Analytics | Transformaciones y queries analíticos en `/sql` mediante CTEs, Joins y funciones ventana. |
-| **Riesgo (ML)** | Modelo LightGBM Libre de Leakage | Predicción robusta de probabilidad de mora en originación con ROC-AUC de **0.7635**. |
-| **Visualización** | Dashboard en Power BI | Monitor de riesgo y comportamiento de cartera con mockups de diseño premium en `/dashboard`. |
-| **IA Conversacional** | Agente RAG con LangGraph | Consultas en lenguaje natural sobre políticas, estadísticas y fichas de clientes en PostgreSQL + PGVector. |
+| **Datos** | ETL + ABT | Consolida 4 fuentes raw en una ABT de 42 features con ingeniería anti-leakage. |
+| **SQL** | Transformaciones & Analytics | CTEs, window functions y vistas analíticas para BI y auditoría de cartera. |
+| **Machine Learning** | LightGBM — Motor de Originación | Predice probabilidad de mora con ROC-AUC de **0.7635**, libre de fuga de información. |
+| **API** | FastAPI — Scoring Endpoint | Expone inferencia en tiempo real para integración con sistemas transaccionales. |
+| **Visualización** | Dashboard Power BI | Monitor de riesgo de cartera con módulos descriptivo y predictivo. |
+| **IA Conversacional** | Agente RAG (LangGraph + PGVector) | Consultas en lenguaje natural sobre portafolio, políticas y fichas de clientes. |
 
 ---
 
-## 2. Estructura del Repositorio
+## 2. Inicio Rápido y Ejecución
 
-El repositorio sigue una arquitectura limpia y modular:
+El flujo completo del proyecto (ETL, Feature Engineering, Modelado y Exportación a DB) está consolidado y orquestado en el cuaderno [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). 
 
+**Requisitos previos:** Python 3.11+, construir un archivo .env e insertar las variables de entorno según el ejemplo. 
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/danezv/proyecto-data-scientist.git
+cd proyecto-data-scientist
+
+# 2. Configurar variables de entorno
+cp .env.example .env
+# Completar NVIDIA_API_KEY y DATABASE_URL en .env
+
+# 3. Instalar dependencias
+python -m venv .venv
+source .venv/bin/activate        # En Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 4. Ejecutar el orquestador principal (poblará la BD y entrenará el modelo)
+jupyter nbconvert --to notebook --execute --inplace 0_Master_Pipeline.ipynb
+
+# 5. (Opcional) Levantar la API de scoring en vivo
+uvicorn src.main:app --reload
 ```
-proyecto-data-scientist/
-├── 0_Master_Pipeline.ipynb   # Orquestador principal (ETL → Train → DB → RAG)
+
+> **Nota sobre Base de Datos:**  Basta con configurar un string de conexión de Supabase o cualquier PostgreSQL (con pgvector) en la variable de entorno `DATABASE_URL`. (Se muestra como insertarlo usando el .env.example)
+
+---
+
+## 3. Arquitectura del Sistema
+├── 0_Master_Pipeline.ipynb       # Orquestador principal del pipeline completo
 ├── src/
-│   ├── config.py             # Configuración centralizada (pydantic-settings)
-│   ├── ingesta.py            # Carga de CSV con tipado estricto
-│   ├── procesamiento.py      # Limpieza (ciudades estandarizadas, outliers, nulos)
-│   ├── consolidacion.py      # Ingeniería de features y agregación digital → ABT
-│   ├── train_mora.py         # Pipeline LightGBM (split, train, eval, export)
-│   ├── rag_agent.py          # Agente RAG con LangGraph + PGVector
-│   └── main.py               # FastAPI — endpoints de scoring e inferencia
-├── sql/
-│   └── transformaciones.sql  # Queries SQL con CTEs y window functions
-├── dashboard/
-│   ├── README.md             # Documentación del dashboard e indicadores
-│   └── capturas/             # Captura del dashboard premium generado
+│   ├── config.py                 # Configuración centralizada (pydantic-settings)
+│   ├── ingesta.py                # Carga de CSVs con tipado estricto y validación
+│   ├── procesamiento.py          # Limpieza, estandarización y tratamiento de outliers
+│   ├── consolidacion.py          # Feature engineering y construcción de la ABT
+│   ├── train_mora.py             # Pipeline ML: split temporal, entrenamiento y evaluación
+│   ├── rag_agent.py              # Agente conversacional RAG con LangGraph + PGVector
+│   └── main.py                   # FastAPI: endpoints de scoring e inferencia
 ├── scripts/
-│   └── populate_rag.py       # Indexa documentos en el vector store
+│   ├── load_raw_supabase.py      # Carga los CSVs raw a Supabase (PostgreSQL)
+│   ├── load_powerbi_predictions.py # Escribe predicciones del modelo a la tabla de BI
+│   └── populate_rag.py           # Indexa chunks de conocimiento en el vector store
+├── sql/
+│   └── transformaciones.sql      # Transformaciones analíticas, vistas y ABT en SQL puro
 ├── notebooks/
-│   ├── 0_Master_Pipeline.ipynb
-│   └── 1_eda_y_calidad.ipynb # Notebook interactivo de EDA y Calidad
+│   ├── 0_Master_Pipeline.ipynb         # (espejo) Orquestador interactivo
+│   ├── 00_carga_base_supabase.ipynb    # Carga de CSVs raw a Supabase (UPSERT idempotente)
+│   ├── 01_powerbi_predicciones.ipynb   # Construye ABT, entrena modelo y carga predicciones_riesgo
+│   ├── 1_eda_y_calidad.ipynb           # Análisis exploratorio y calidad de datos
+│   ├── 2_modelado_y_evaluacion.ipynb   # Iteraciones de modelado y métricas
+│   └── 02_aporte_adicional_rag_llm.ipynb # Demo interactivo del agente RAG
+├── docs/
+│   ├── diccionario_datos.md      # Diccionario de campos por tabla y reglas anti-leakage
+│   └── analisis_arquitectura_modelado.md
+├── dashboard/
+│   └── capturas/                 # Capturas del dashboard Power BI (.pbix gestionado fuera del repo)
 ├── data/
-│   ├── raw/                  # CSVs originales (no versionados)
-│   └── processed/            # ABT en parquet (no versionado)
-├── models/                   # modelo_mora.pkl (no versionado)
-├── docker-compose.yml        # PostgreSQL 16 + pgvector
-└── .env.example              # Plantilla de variables de entorno
+│   ├── raw/                      # Datos originales entregados con la prueba
+│   └── processed/                # ABT en Parquet (generada por el pipeline — ver data/processed/README.md)
+├── models/                       # modelo_mora.pkl serializado (generado por el pipeline — ver models/README.md)
+├── supabase/                     # Migraciones DDL para Supabase
+├── docker-compose.yml            # PostgreSQL 16 + pgvector en contenedor local
+└── .env.example                  # Plantilla de variables de entorno
 ```
 
 ```mermaid
 graph LR
-    A[CSV raw] --> B[ETL / ABT]
-    B --> C[LightGBM]
-    C --> D[(PostgreSQL\npredicciones_riesgo)]
-    D --> E[Power BI]
-    D --> F[PGVector\nrag_conocimiento]
-    F --> G[Agente RAG]
+    A[CSV raw\nclientes · creditos\npagos · eventos_app] --> B[ETL / ABT\n42 features]
+    B --> C[LightGBM\nROC-AUC 0.7635]
+    C --> D[(PostgreSQL\nSupabase\npredicciones_riesgo)]
+    B --> D
+    D --> E[Power BI\nDashboard Cartera]
+    D --> F[PGVector\nrag_conocimiento\n1538 chunks]
+    F --> G[Agente RAG\nLangGraph]
     G --> H[NVIDIA NIM\nllama-3.1-8b]
+    C --> I[FastAPI\nScoring API]
 ```
 
 ---
 
-## 3. Auditoría de Calidad y Fuga de Información
+## 4. Descripción de Módulos y Scripts
 
-### A. Corrección del Target `es_moroso` (Lógica de Negocio)
-En la versión original, la lógica del target evaluaba pagos con el filtro `fecha_pago <= cutoff_date`.
-* **El Problema**: Los créditos en mora activa no pagados tienen `fecha_pago` nulo (`NULL`), por lo cual eran erróneamente excluidos de la tabla de pagos o clasificados como no-morosos (`es_moroso = 0`). Esto resultaba en la pérdida de los peores perfiles de riesgo.
-* **La Solución**: Cambiar el filtro a `fecha_vencimiento <= cutoff_date`. Todo crédito con una cuota cuya fecha de vencimiento haya expirado antes del corte se evalúa: si su pago no ha sido registrado o su `dias_mora` supera 30 días, se clasifica correctamente como `es_moroso = 1`. Esto elevó el número de morosos reales de 387 a 416.
+### `src/` — Núcleo del Sistema
 
-### B. Mitigación de Fuga de Información (Data Leakage)
-* **El Problema**: La variable `estado_credito_operativo` (valores: *Activo, Finalizado, Mora moderada, Mora severa*) se utilizaba en el entrenamiento del modelo. Al ser una variable que se actualiza *después* del desembolso, provocaba un sobreajuste masivo en el modelo (ROC-AUC ficticio de `0.98`), inútil para predecir al momento de originación (desembolso).
-* **La Solución**: Excluir estrictamente `estado_credito_operativo` y el identificador sesgado `email_hash` del set de entrenamiento. La tasa de acierto del modelo se redujo a una métrica real de **ROC-AUC = 0.7635**, la cual es excelente y robusta para la industria financiera de consumo.
+| Módulo | Responsabilidad |
+|---|---|
+| `config.py` | Define `Settings` con `pydantic-settings`: lee variables de entorno (`.env`), expone `DATABASE_URL`, `NVIDIA_API_KEY`, `CUTOFF_DATE` y rutas de artefactos. Punto único de configuración para todos los módulos. |
+| `ingesta.py` | Carga los cuatro CSVs raw con dtype estricto, detecta el BOM UTF-8 y valida la presencia de columnas requeridas antes de retornar DataFrames tipados. |
+| `procesamiento.py` | Aplica el `DataCleaner`: estandariza ciudades (mapeo de variantes ortográficas), imputa nulos con mediana, winsoriza `ingreso_mensual_estimado` al P99 y genera la columna `flag_ingreso` para trazabilidad de outliers. |
+| `consolidacion.py` | Orquesta el `DataConsolidator`: cruza las cuatro tablas, agrega métricas de comportamiento de pago por crédito, filtra eventos de app previos al desembolso (anti-leakage temporal) y construye la ABT final con 42 features. |
+| `train_mora.py` | Pipeline ML completo: define el target `es_moroso` con corte temporal (`fecha_vencimiento ≤ CUTOFF_DATE`, `dias_mora > 30`), realiza split estratificado, entrena `LGBMClassifier` con early stopping, evalúa con ROC-AUC y exporta el modelo a `models/modelo_mora.pkl`. Excluye explícitamente variables post-desembolso. |
+| `rag_agent.py` | Implementa el agente conversacional: usa `LangGraph` para el grafo de razonamiento, `PGVector` como retriever semántico y `NVIDIA NIM` (llama-3.1-8b) como LLM generativo. Responde en español sobre portafolio, políticas de cobro y fichas de clientes. |
+| `main.py` | API REST con `FastAPI`: expone `POST /score` que recibe features de un crédito y devuelve la probabilidad de mora predicha por el modelo serializado. Incluye middleware de validación y manejo de errores. |
 
-### C. Calidad de Datos (Data Cleaning)
-* **Ciudades Desnormalizadas**: Se identificaron múltiples variantes y faltas de ortografía (ej: *'bogot'*, *'medellin '* con espacios, *'barranquila'*). Se implementó un mapeo robusto en `DataCleaner.clean_clientes` que unifica los valores a su título correcto (*Bogotá*, *Medellín*, *Barranquilla*).
-* **Tratamiento de Nulos**: Los nulos en `ingreso_mensual_estimado` y `score_externo` fueron imputados utilizando la mediana general para evitar distorsiones por outliers. Los nulos en `producto_credito` se marcaron como `'Desconocido'`.
+### `scripts/` — Operaciones de Datos
 
-### D. Enriquecimiento de Datos Digitales (App Events)
-Para agregar valor sin violar la línea temporal (anti-leakage), se cruzó la tabla `eventos_app.csv` y se calcularon agregaciones **únicamente de eventos ocurridos antes de la fecha de desembolso** de cada crédito. Esto introdujo variables clave como:
-* `prev_evento_pago_fallido`: Número de intentos de pago fallidos del cliente previos al nuevo desembolso.
-* `prev_evento_sesion_seg_tot`: Duración total del cliente interactuando con la app antes de tomar el crédito.
+| Script | Responsabilidad |
+|---|---|
+| `load_raw_supabase.py` | Lee los CSVs de `data/raw/` y los carga (upsert) en las tablas raw de Supabase (`raw_clientes`, `raw_creditos`, `raw_pagos`, `raw_eventos_app`) usando `SQLAlchemy`. Idempotente: puede ejecutarse múltiples veces sin duplicar registros. |
+| `load_powerbi_predictions.py` | Toma el ABT procesado y las predicciones del modelo, y escribe el resultado a la tabla `predicciones_riesgo` en PostgreSQL para consumo directo desde Power BI via DirectQuery. |
+| `populate_rag.py` | Genera chunks de texto a partir de fichas de clientes, estadísticas de cartera y documentos de política. Los embeds con `intfloat/multilingual-e5-small` y los indexa en `PGVector` (`vector_store`). |
 
----
+### `notebooks/` — Cuadernos del flujo analítico
 
-## 4. Modelo de Riesgo — Resultados
-
-| Métrica | Valor Real (Leakage-Free) | Valor Ficticio (Con Leakage) |
-|---|---|---|
-| **ROC-AUC (Test)** | **0.7635** | 0.9844 (Sobreajustado) |
-| **Accuracy** | **71%** | 97% |
-| **Mora Global Evaluada** | **27.2%** | 25.4% |
-
-### Top Variables más Importantes (Feature Importance)
-1. **`score_externo` (126 pts)**: El historial crediticio provisto por centrales de riesgo es el predictor más fuerte.
-2. **`relacion_cuota_ingreso` (92 pts)**: La carga financiera del crédito respecto a los ingresos del cliente.
-3. **`mes_desembolso` (81 pts)**: La estacionalidad temporal de la colocación de cartera.
-4. **`ingreso_mensual_estimado` (71 pts)**: Capacidad monetaria del cliente.
-5. **`tasa_interes_mensual` (66 pts)**: A mayor tasa cobrada, mayor el riesgo de mora (efecto selección/riesgo moral).
+| Notebook | Rol |
+|---|---|
+| `1_eda_y_calidad.ipynb` | EDA y diagnóstico de calidad de datos. Detecta nulos, outliers e inconsistencias documentadas en el README §4. |
+| `2_modelado_y_evaluacion.ipynb` | Iteración de modelado: definición del target, splits, entrenamiento y métricas. |
+| `00_carga_base_supabase.ipynb` | Carga reproducible de las cuatro tablas raw a Supabase con `UPSERT`. Bloquea conexiones a `localhost` para evitar cargas accidentales contra el Docker local. |
+| `01_powerbi_predicciones.ipynb` | Construye la ABT, entrena el modelo, genera `predicciones_riesgo` y la carga a Supabase para consumo desde Power BI. |
+| `02_aporte_adicional_rag_llm.ipynb` | Demo interactiva del agente RAG. |
+| `0_Master_Pipeline.ipynb` | Orquesta el flujo completo (ETL → ABT → modelo → predicciones → RAG).
 
 ---
 
-## 5. Agente RAG Financiero
+## 5. Ingeniería de Datos y Calidad
 
-El agente responde preguntas sobre el portafolio en lenguaje natural utilizando **LangGraph** y **PGVector**:
-* **Embedding Model**: `intfloat/multilingual-e5-small` cargado en local para búsquedas semánticas sobre base de datos.
-* **Modelo LLM**: `meta/llama-3.1-8b-instruct` consumido a través de NVIDIA NIM.
-* **Base de Conocimiento**: Indexación de 1,538 chunks conteniendo resúmenes ejecutivos, políticas de cobro, glosario y fichas individuales de cada cliente evaluado.
+### A. Definición Robusta del Target `es_moroso`
 
----
+La definición del target es la decisión más crítica en un modelo de riesgo de originación. Se evalúa con corte temporal en `2026-04-30`:
 
-## 6. SQL y Capa de Transformación de Datos
-
-Las transformaciones completas de datos para recrear la ABT de modelado y responder preguntas de negocio se encuentran consolidadas en el archivo [sql/transformaciones.sql](sql/transformaciones.sql).
-
-El archivo incluye:
-* CTEs complejas para la estandarización e imputación de nulos.
-* Filtros temporales anti-leakage.
-* Funciones ventana (`NTILE`, `OVER`) para clasificar comportamientos y segmentar clientes por riesgo.
-* Métricas analíticas de agregación de pagos mensuales y retrasos.
-
----
-
-## 7. Dashboard de Power BI
-
-Para responder a las necesidades de negocio de visualización y KPIs, se estructuró un dashboard interactivo de diseño premium.
-
-* La documentación de métricas y decisiones asociadas está disponible en el [README de Dashboard](dashboard/README.md).
-* La visualización del panel interactivo en alta definición se puede apreciar a continuación:
-
-![Dashboard TumiPay](dashboard/capturas/dashboard_riesgo.png)
-
----
-
-## 8. Inicio Rápido
-
-**Requisitos:** Docker, Python 3.11+, y una API Key de [NVIDIA NIM](https://build.nvidia.com).
-
-```bash
-# 1. Clonar el repositorio
-git clone https://github.com/<tu-usuario>/proyecto-data-scientist.git
-cd proyecto-data-scientist
-
-# 2. Configurar variables de entorno (.env)
-cp .env.example .env
-# Editar .env y colocar tu NVIDIA_API_KEY y cambiar DATABASE_URL si es necesario
-
-# 3. Levantar base de datos local (PostgreSQL + PGVector)
-docker-compose up -d
-
-# 4. Crear entorno virtual e instalar paquetes
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# 5. Ejecutar la orquestación del pipeline (ETL -> ML Train -> DB Load -> RAG Populate)
-.venv/bin/jupyter nbconvert --to notebook --execute --inplace 0_Master_Pipeline.ipynb
+```
+es_moroso = 1  si  MAX(dias_mora) > 30
+               para cuotas con fecha_vencimiento <= '2026-04-30'
 ```
 
+> **Por qué `fecha_vencimiento` y no `fecha_pago`:** Los créditos en mora activa tienen `fecha_pago = NULL`. Filtrar por `fecha_pago` excluye los peores perfiles de riesgo del entrenamiento, produciendo un modelo sesgado hacia buenos pagadores. El cambio al filtro por `fecha_vencimiento` elevó la tasa de mora evaluada del 25.4% al **27.2%** real, recuperando 29 morosos que el enfoque erróneo descartaba.
+
+### B. Mitigación de Data Leakage
+
+La variable `estado_credito_operativo` (valores: *Activo, Finalizado, Mora moderada, Mora severa*) es conocida **después** del desembolso, no al momento de originar el crédito. Su inclusión en el modelo producía un ROC-AUC ficticio de `0.9844` por filtración directa del target. Esta variable y `email_hash` fueron excluidas estrictamente del feature set. El resultado es un **ROC-AUC real de 0.7635**, sólido y reproducible en producción.
+
+| Escenario | ROC-AUC | Accuracy | Utilidad en producción |
+|---|---|---|---|
+| **Con leakage** (`estado_credito_operativo` incluido) | 0.9844 | 97% | Nula — aprende el target directamente |
+| **Sin leakage** (modelo actual) | **0.7635** | **71%** | **Alta — predice en originación real** |
+
+### C. Calidad y Limpieza de Datos
+
+| Problema detectado | Solución implementada |
+|---|---|
+| Ciudades con variantes ortográficas (*'bogot'*, *'medellin '*, *'barranquila'*) | Mapeo normalizado en `DataCleaner.clean_clientes` → valores canónicos (*Bogotá*, *Medellín*, *Barranquilla*) |
+| Nulos en `ingreso_mensual_estimado` y `score_externo` | Imputación con mediana del conjunto (robusta ante outliers) |
+| Nulos en `producto_credito` | Categoría explícita `'Desconocido'` para trazabilidad |
+| Outlier `ingreso_mensual_estimado = 120M COP` (CL00493, estrato 2) | Raw conservado intacto; vista `v_clientes_bi` winsoriza a P99 y asigna `flag_ingreso = 'error_captura'` |
+
+### D. Feature Engineering — Señales Digitales Anti-Leakage
+
+Para enriquecer el perfil del solicitante sin violar la línea temporal, se calculan agregaciones de `eventos_app` **únicamente con eventos anteriores a la fecha de desembolso** del crédito evaluado:
+
+- `prev_evento_pago_fallido`: Intentos fallidos de pago previos al nuevo crédito — señal de tensión financiera.
+- `prev_evento_sesion_seg_tot`: Engagement total con la app antes del crédito — proxy de madurez financiera digital.
+
 ---
 
-## 9. Variables de Entorno
+## 6. Modelo de Riesgo — Resultados
 
-Copia `.env.example` a `.env` y completa los valores:
+El modelo es un `LGBMClassifier` entrenado con split temporal estratificado (80/20) y early stopping. Opera como **motor de originación**: recibe el perfil del solicitante al momento del desembolso y produce una probabilidad de mora.
 
-```bash
-cp .env.example .env
-```
+### Métricas de Evaluación
 
-| Variable | Requerida | Descripción |
-|---|---|---|
-| `DATABASE_URL` | ✅ | Connection string PostgreSQL |
-| `NVIDIA_API_KEY` | ✅ | API key de [build.nvidia.com](https://build.nvidia.com) |
-| `CUTOFF_DATE` | — | Fecha de corte del modelo (default: `2026-04-30`) |
-| `LANGCHAIN_API_KEY` | Opcional | Telemetría LangSmith |
-| `LANGCHAIN_TRACING_V2` | Opcional | `true` para activar trazas |
+| Métrica | Modelo actual (leakage-free) |
+|---|---|
+| **ROC-AUC (Test)** | **0.7635** |
+| **Accuracy** | **71%** |
+| **Tasa de mora evaluada** | **27.2%** (416 / 1.527 créditos) |
 
-> **Seguridad:** `.env` está en `.gitignore` y nunca debe subirse al repositorio. El archivo `.env.example` es la única referencia pública.
+### Distribución de Mora por Rango de Monto de Crédito
+
+| Rango | Créditos totales | En mora | Tasa de mora |
+|---|---:|---:|---:|
+| < 500K COP | 78 | 19 | 24.4% |
+| 500K – 1M | 234 | 80 | **34.2%** |
+| 1M – 2M | 496 | 125 | 25.2% |
+| 2M – 5M | 553 | 144 | 26.0% |
+| 5M – 10M | 139 | 41 | 29.5% |
+| > 10M | 27 | 7 | 25.9% |
+| **Total** | **1.527** | **416** | **27.2%** |
+
+> El segmento 500K–1M presenta la mayor tasa de mora (34.2%), lo que sugiere mayor riesgo relativo en créditos pequeños. Este insight orienta directamente las políticas de aprobación y pricing por segmento.
+
+### Top Variables más Importantes (Feature Importance — LightGBM)
+
+1. **`score_externo` (126 pts)** — Historial en centrales de riesgo: predictor dominante.
+2. **`relacion_cuota_ingreso` (92 pts)** — Carga financiera del crédito sobre los ingresos.
+3. **`mes_desembolso` (81 pts)** — Estacionalidad de la colocación de cartera.
+4. **`ingreso_mensual_estimado` (71 pts)** — Capacidad de pago del solicitante.
+5. **`tasa_interes_mensual` (66 pts)** — Efecto de selección adversa: tasas altas correlacionan con mayor riesgo.
 
 ---
 
-## 10. Uso de Inteligencia Artificial (Declaración)
+## 7. Agente RAG Financiero
 
-Conforme a las políticas de transparencia e integridad de la prueba:
-1. **GitHub Copilot / Claude 3.5 Sonnet**: Utilizados como asistentes para la estructuración inicial de código (boilerplate) en los módulos de `FastAPI` e infraestructura de `LangGraph`.
-2. **Generación de UI / Diseño**: Se utilizó la herramienta generativa local para mockups gráficos de Power BI a fin de presentar un entregable estético, funcional e inmediato sobre el diseño premium propuesto para la visualización del negocio.
-3. **Desarrollo del Core**: La detección de fugas de información, corrección matemática del target de pagos sin fecha y modelado analítico LightGBM libre de leakage son resultado del análisis técnico y autoría directa.
+El agente permite al equipo de negocio y riesgo consultar el portafolio en lenguaje natural sin escribir SQL. Opera sobre una base de conocimiento vectorial indexada en PostgreSQL.
+
+| Componente | Tecnología |
+|---|---|
+| Grafo de razonamiento | LangGraph (nodos: retrieve → generate → respond) |
+| Embedding | `intfloat/multilingual-e5-small` — ejecución local, sin latencia de red |
+| Vector store | PGVector (tabla `vector_store` en Supabase) |
+| LLM generativo | `meta/llama-3.1-8b-instruct` vía NVIDIA NIM |
+| Base de conocimiento | 1.538 chunks: resúmenes ejecutivos, políticas de cobro, glosario financiero, fichas individuales por cliente |
+
+**Ejemplos de consultas soportadas:**
+- *"¿Cuál es la tasa de mora del segmento Libranza en Medellín?"*
+- *"Dame el perfil crediticio del cliente CL00493"*
+- *"¿Qué política aplica para créditos con relación cuota-ingreso mayor al 40%?"*
+
+---
+
+## 8. SQL y Capa Analítica
+
+El archivo [sql/transformaciones.sql](sql/transformaciones.sql) contiene todas las transformaciones reproducibles en SQL puro, diseñadas para ejecutarse directamente sobre las tablas raw en PostgreSQL/Supabase. El diccionario completo de los campos fuente y derivados está en [docs/diccionario_datos.md](docs/diccionario_datos.md).
+
+**Contenido:**
+
+- **Secciones A–D**: CTEs de estandarización, imputación de nulos y construcción del target con corte temporal.
+- **Sección E**: Consolidación de la ABT final con todas las features del modelo.
+- **Vista `v_clientes_bi`**: Vista analítica para Power BI que winsoriza ingresos al P99 dinámico, clasifica outliers y expone métricas de comportamiento por cliente.
+- **Window functions**: `NTILE`, `RANK`, `LAG` para segmentación de cartera, detección de deterioro y análisis de cohortes.
+- **Métricas de cartera**: Agregaciones de días de mora, tasa de cumplimiento y concentración por producto y geografía.
+
+---
+
+## 9. Dashboard de Power BI
+
+Dashboard interactivo con dos módulos orientados a perfiles distintos del negocio:
+
+- **Módulo Descriptivo**: KPIs de cartera (mora por segmento, distribución geográfica, concentración por producto), conectado a `raw_creditos` y `v_clientes_bi`.
+- **Módulo Predictivo**: Distribución de probabilidades de mora del modelo, segmentación de riesgo y alertas de originación, conectado a `predicciones_riesgo`.
+
+> El archivo `.pbix` se gestiona fuera del repositorio por tamaño. Las capturas funcionales del dashboard quedan en [dashboard/capturas/](dashboard/capturas/) como evidencia reproducible, y los datos que lo alimentan se regeneran ejecutando [notebooks/01_powerbi_predicciones.ipynb](notebooks/01_powerbi_predicciones.ipynb).
+
+![Dashboard — Módulo Descriptivo](dashboard/capturas/descriptiva.png)
+![Dashboard — Módulo Predictivo](dashboard/capturas/predictiva.png)
+
+---
+
+## 10. Limitaciones y Mejoras Previstas
+
+Si bien la solución presentada es totalmente funcional, en un escenario productivo con mayor tiempo y presupuesto se plantearían las siguientes mejoras:
+
+**1. Limitaciones actuales**
+- **Volumen de los datos:** Las conclusiones (e.g. riesgo en segmento 500K-1M) se derivan de un dataset sintético relativamente pequeño (1.527 créditos). En un entorno real, la representatividad podría requerir recalibración.
+- **Ventana de maduración:** El umbral de mora se definió sobre un corte temporal fijo, sin embargo, créditos muy recientes (menos de 1 mes de originados) podrían no haber tenido la oportunidad material para entrar en un estado de morosidad (>30 días).
+
+**2. Oportunidades de mejora y Próximos pasos (Next Steps)**
+- **Incorporación de Cohort Analysis en el target:** En lugar de usar una ventana plana, madurar la definición del target estandarizando ventanas de observación, como por ejemplo: "Mora mayor a 30 días detectada dentro de los primeros 6 meses de vida del crédito" (Vintage Analysis).
+- **MLOps y CI/CD:** El pipeline actual se orquesta vía notebooks para simplificar la evaluación. Se podría evolucionar pasando el código a un ambiente de Airflow (se dejó un borrador de DAG documentado en `dags/`) acoplado a un registro de modelos con MLflow y control de data con DVC.
+- **Modelos explicativos (XAI):** Aplicar métricas de SHAP (SHapley Additive exPlanations) no sólo para las variables globales, sino para tener un valor explicativo en cada predicción (permitiendo devolver un 'Reason Code' a los clientes en caso de rechazo del crédito).
+- **Enriquecimiento del Agente RAG:** Habilitar un nodo `Text-to-SQL` para que el agente LangGraph no sólo consuma de la base de texto de pgvector, sino que pueda traducir preguntas del modelo directamente a queries SQL asertivas para obtener agregaciones de cartera al vuelo.
+
+---
+
+## 11. Prácticas de Desarrollo y Uso de IA
+
+Este proyecto fue desarrollado siguiendo principios de ingeniería de software aplicada a datos:
+
+- **Reproducibilidad**: El pipeline completo es re-ejecutable desde cero con `0_Master_Pipeline.ipynb`. Los datos raw y artefactos de modelo no se versionan, pero el código que los genera sí.
+- **Separación de responsabilidades**: Cada módulo tiene una única responsabilidad (ingesta, limpieza, features, entrenamiento, API, RAG). La configuración centralizada en `config.py` evita valores hardcodeados.
+- **Anti-leakage por diseño**: El feature engineering aplica filtros temporales explícitos en cada join. El target se construye con `fecha_vencimiento`, no `fecha_pago`, para preservar morosos sin fecha de pago registrada.
+- **Trazabilidad de outliers**: Los datos raw nunca se modifican. Las correcciones (winsorización, imputación) ocurren en la capa de procesamiento y se documentan con flags en las vistas analíticas.
+
+### Uso de Herramientas de IA Generativa
+
+Se utilizaron herramientas de IA asistida (GitHub Copilot / Claude) como aceleradoras del desarrollo en tareas de bajo valor diferencial:
+
+| Uso de IA | Descripción |
+|---|---|
+| **Boilerplate de infraestructura** | Scaffolding inicial de la API FastAPI, configuración de LangGraph y estructura de endpoints. |
+| **Generación de SQL repetitivo** | Sintaxis de CTEs y window functions estándar de PostgreSQL. |
+| **Mockups visuales** | Diseño gráfico del dashboard Power BI para validación de layout antes de la implementación. |
+
+**Autoría directa (sin asistencia de IA):**
+- Detección e identificación del data leakage por `estado_credito_operativo`.
+- Corrección metodológica del target (`fecha_vencimiento` vs `fecha_pago`).
+- Diseño del feature set anti-leakage con eventos de app filtrados temporalmente.
+- Análisis de outlier CL00493 (ingreso $120M, estrato 2) y estrategia de tratamiento en vista analítica.
+- Arquitectura del sistema y decisiones de diseño del pipeline end-to-end.
