@@ -119,7 +119,7 @@ def export_powerbi_datalake(abt: pd.DataFrame, predicciones: pd.DataFrame, outpu
 
     counts: dict[str, int] = {}
     for table_name, dataframe in tables.items():
-        dataframe.to_csv(output_dir / f"{table_name}.csv", index=False)
+        dataframe.to_csv(output_dir / f"{table_name}.csv", index=False, sep=';', decimal=',', encoding='utf-8-sig')
         counts[table_name] = len(dataframe)
 
     manifest = {
