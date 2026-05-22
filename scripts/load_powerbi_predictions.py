@@ -32,10 +32,10 @@ def main() -> None:
 
     consolidator = DataConsolidator(cutoff_date=settings.CUTOFF_DATE)
     abt = consolidator.build_analytical_base_table(df_clientes, df_creditos, df_pagos, df_eventos)
-    abt.to_parquet(settings.DATA_PROCESSED_DIR / "abt.parquet", index=False)
+    abt.to_csv(settings.DATA_PROCESSED_DIR / "abt.csv", index=False)
 
     trainer = MoraModelTrainer(
-        data_path=settings.DATA_PROCESSED_DIR / "abt.parquet",
+        data_path=settings.DATA_PROCESSED_DIR / "abt.csv",
         model_output_path=settings.MODELS_DIR / "modelo_mora.pkl",
     )
     X_train, X_test, y_train, y_test = trainer.train_test_split_custom(abt)

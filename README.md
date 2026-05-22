@@ -41,7 +41,7 @@ Motor de riesgo de crédito de extremo a extremo para calculo de riesgo creditic
 
 ## 2. Inicio Rápido y Ejecución
 
-El flujo completo del proyecto está consolidado y orquestado en el cuaderno [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). Ese notebook es el punto único de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, exportar el mini data lake Parquet para Power BI, indexar el RAG en PGVector y hacer preguntas al LLM.
+El flujo completo del proyecto está consolidado y orquestado en el cuaderno [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). Ese notebook es el punto único de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, exportar el mini data lake CSV para Power BI, indexar el RAG en PGVector y hacer preguntas al LLM.
 
 **Requisitos previos:** Python 3.11+, construir un archivo .env e insertar las variables de entorno según el ejemplo. 
 
@@ -59,7 +59,7 @@ python -m venv .venv
 source .venv/bin/activate        # En Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 4. Ejecutar el orquestador principal (pobla BD, entrena modelo, genera Parquet, carga RAG y prueba el LLM)
+# 4. Ejecutar el orquestador principal (pobla BD, entrena modelo, genera CSV, carga RAG y prueba el LLM)
 jupyter nbconvert --to notebook --execute --inplace 0_Master_Pipeline.ipynb
 
 # 5. (Opcional) Levantar la API de scoring en vivo
@@ -82,7 +82,7 @@ uvicorn src.main:app --reload
 │   └── main.py                   # FastAPI: endpoints de scoring e inferencia
 ├── scripts/
 │   ├── load_raw_supabase.py      # Carga los CSVs raw a Supabase (PostgreSQL)
-│   ├── load_powerbi_predictions.py # Escribe predicciones y genera mini data lake Parquet
+│   ├── load_powerbi_predictions.py # Escribe predicciones y genera mini data lake CSV
 │   └── populate_rag.py           # Indexa chunks de conocimiento en el vector store
 ├── sql/
 │   └── transformaciones.sql      # Transformaciones analíticas, vistas y ABT en SQL puro
@@ -100,7 +100,7 @@ uvicorn src.main:app --reload
 │   └── *.pbix                    # Dashboard conectado a data/processed/powerbi
 ├── data/
 │   ├── raw/                      # Datos originales entregados con la prueba
-│   └── processed/                # ABT y mini data lake Power BI en Parquet
+│   └── processed/                # ABT y mini data lake Power BI en CSV
 ├── models/                       # modelo_mora.pkl serializado (generado por el pipeline — ver models/README.md)
 ├── supabase/                     # Migraciones DDL para Supabase
 └── .env.example                  # Plantilla de variables de entorno
@@ -267,10 +267,10 @@ El archivo [sql/transformaciones.sql](sql/transformaciones.sql) contiene todas l
 
 ## 9. Dashboard de Power BI
 
-Dashboard interactivo con dos módulos orientados a perfiles distintos del negocio. Para que el reclutador pueda abrirlo sin configurar ODBC ni credenciales, el `.pbix` se conecta a los Parquet locales de [data/processed/powerbi/](data/processed/powerbi/).
+Dashboard interactivo con dos módulos orientados a perfiles distintos del negocio. Para que el reclutador pueda abrirlo sin configurar ODBC ni credenciales, el `.pbix` se conecta a los CSV locales de [data/processed/powerbi/](data/processed/powerbi/).
 
 - **Módulo Descriptivo**: KPIs de cartera (mora por segmento, distribución geográfica, concentración por producto), conectado a `fact_creditos`, `dim_cliente`, `dim_producto_credito`, `dim_tiempo` y `perfil_descriptivo_cliente`.
-- **Módulo Predictivo**: Distribución de probabilidades de mora del modelo, segmentación de riesgo y alertas de originación, conectado a `predicciones_riesgo.parquet`.
+- **Módulo Predictivo**: Distribución de probabilidades de mora del modelo, segmentación de riesgo y alertas de originación, conectado a `predicciones_riesgo.CSV`.
 
 > Los datos locales del dashboard se regeneran ejecutando [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). El mini data lake replica la semántica de `abt_analitica_riesgo`, `predicciones_riesgo`, dimensiones y hechos usados en Supabase.
 

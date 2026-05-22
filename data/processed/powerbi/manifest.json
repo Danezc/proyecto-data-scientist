@@ -1,6 +1,6 @@
 {
   "descripcion": "Mini data lake local para Power BI. Regenerado por 0_Master_Pipeline.ipynb.",
-  "formato": "parquet",
+  "formato": "csv",
   "tablas": {
     "abt_analitica_riesgo": 1527,
     "predicciones_riesgo": 1527,

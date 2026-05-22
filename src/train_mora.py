@@ -24,7 +24,7 @@ class MoraModelTrainer:
     def load_data(self) -> pd.DataFrame:
         """Carga la Tabla Analítica Final (ABT)."""
         logger.info(f"Cargando ABT desde {self.data_path}")
-        if self.data_path.suffix == '.parquet':
+        if self.data_path.suffix == '.csv':
             return pd.read_parquet(self.data_path)
         return pd.read_csv(self.data_path)
         
@@ -118,7 +118,7 @@ class MoraModelTrainer:
         self.export_model(model, list(X_train.columns))
 
 if __name__ == "__main__":
-    abt_path = settings.DATA_PROCESSED_DIR / "abt.parquet"
+    abt_path = settings.DATA_PROCESSED_DIR / "abt.csv"
     model_path = settings.MODELS_DIR / "modelo_mora.pkl"
     trainer = MoraModelTrainer(abt_path, model_path)
     trainer.run_pipeline()

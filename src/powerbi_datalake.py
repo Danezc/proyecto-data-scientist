@@ -94,7 +94,7 @@ def _build_perfil_cliente(predicciones: pd.DataFrame) -> pd.DataFrame:
 
 
 def export_powerbi_datalake(abt: pd.DataFrame, predicciones: pd.DataFrame, output_dir: Path) -> dict[str, int]:
-    """Exporta tablas locales en Parquet para Power BI sin depender de ODBC/Supabase."""
+    """Exporta tablas locales en CSV para Power BI sin depender de ODBC/Supabase."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     abt_export = _add_bi_income_fields(abt)
@@ -119,12 +119,12 @@ def export_powerbi_datalake(abt: pd.DataFrame, predicciones: pd.DataFrame, outpu
 
     counts: dict[str, int] = {}
     for table_name, dataframe in tables.items():
-        dataframe.to_parquet(output_dir / f"{table_name}.parquet", index=False)
+        dataframe.to_csv(output_dir / f"{table_name}.csv", index=False)
         counts[table_name] = len(dataframe)
 
     manifest = {
         "descripcion": "Mini data lake local para Power BI. Regenerado por 0_Master_Pipeline.ipynb.",
-        "formato": "parquet",
+        "formato": "csv",
         "tablas": counts,
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")

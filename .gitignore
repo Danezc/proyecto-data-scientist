@@ -30,7 +30,7 @@ build/
 !/data/processed/.gitkeep
 !/data/processed/README.md
 !/data/processed/powerbi/
-!/data/processed/powerbi/*.parquet
+!/data/processed/powerbi/*.csv
 !/data/processed/powerbi/manifest.json
 
 # ── Modelos entrenados (binarios grandes) ────────────────────────────────────
