@@ -6,7 +6,7 @@ Este directorio se **genera automáticamente** por el pipeline. Para facilitar l
 
 | Archivo | Generado por | Descripción |
 |---|---|---|
-| `abt.CSV` | [0_Master_Pipeline.ipynb](../../0_Master_Pipeline.ipynb), [scripts/load_powerbi_predictions.py](../../scripts/load_powerbi_predictions.py) y [src/consolidacion.py](../../src/consolidacion.py) | Analytical Base Table consolidada con las 42 features del modelo y la variable objetivo `es_moroso`. Insumo directo del entrenamiento. |
+| `abt.CSV` | [01_Pipeline_Data_Model.ipynb](../../01_Pipeline_Data_Model.ipynb), [scripts/load_powerbi_predictions.py](../../scripts/load_powerbi_predictions.py) y [src/consolidacion.py](../../src/consolidacion.py) | Analytical Base Table consolidada con las 42 features del modelo y la variable objetivo `es_moroso`. Insumo directo del entrenamiento. |
 
 ## Mini data lake Power BI
 
@@ -26,7 +26,7 @@ La carpeta `data/processed/powerbi/` contiene tablas CSV listas para conectarse 
 ## Cómo regenerarlo
 
 ```bash
-jupyter nbconvert --to notebook --execute --inplace 0_Master_Pipeline.ipynb
+jupyter nbconvert --to notebook --execute --inplace 01_Pipeline_Data_Model.ipynb
 ```
 
 > El directorio se crea con `mkdir(parents=True, exist_ok=True)` desde `src/config.py` (`settings.DATA_PROCESSED_DIR`). No requiere creación manual.

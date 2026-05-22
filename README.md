@@ -41,7 +41,7 @@ Motor de riesgo de crédito de extremo a extremo para calculo de riesgo creditic
 
 ## 2. Inicio Rápido y Ejecución
 
-El flujo completo del proyecto está consolidado y orquestado en el cuaderno [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). Ese notebook es el punto único de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, exportar el mini data lake CSV para Power BI, indexar el RAG en PGVector y hacer preguntas al LLM.
+El flujo completo del proyecto está consolidado y orquestado en el cuaderno [01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb](01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb). Ese notebook es el punto único de ejecución para cargar Supabase, crear la vista de BI, entrenar el modelo, poblar `predicciones_riesgo`, exportar el mini data lake CSV para Power BI, indexar el RAG en PGVector y hacer preguntas al LLM.
 
 **Requisitos previos:** Python 3.11+, construir un archivo .env e insertar las variables de entorno según el ejemplo. 
 
@@ -60,7 +60,7 @@ source .venv/bin/activate        # En Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Ejecutar el orquestador principal (pobla BD, entrena modelo, genera CSV, carga RAG y prueba el LLM)
-jupyter nbconvert --to notebook --execute --inplace 0_Master_Pipeline.ipynb
+jupyter nbconvert --to notebook --execute --inplace 01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb
 
 # 5. (Opcional) Levantar la API de scoring en vivo
 uvicorn src.main:app --reload
@@ -71,7 +71,7 @@ uvicorn src.main:app --reload
 ---
 
 ## 3. Arquitectura del Sistema
-├── 0_Master_Pipeline.ipynb       # Orquestador principal del pipeline completo
+├── 01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb       # Orquestador principal del pipeline completo
 ├── src/
 │   ├── config.py                 # Configuración centralizada (pydantic-settings)
 │   ├── ingesta.py                # Carga de CSVs con tipado estricto y validación
@@ -149,7 +149,7 @@ graph LR
 |---|---|
 | `1_eda_y_calidad.ipynb` | EDA y diagnóstico de calidad de datos. Detecta nulos, outliers e inconsistencias documentadas en el README §4. |
 | `2_modelado_y_evaluacion.ipynb` | Iteración de modelado: definición del target, splits, entrenamiento y métricas. |
-| `0_Master_Pipeline.ipynb` | Orquestador principal de entrega: ETL → vista BI → ABT → modelo → predicciones → RAG → pregunta al LLM. |
+| `01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb` | Orquestador principal de entrega: ETL → vista BI → ABT → modelo → predicciones → RAG → pregunta al LLM. |
 | `00_carga_base_supabase.ipynb` | Auxiliar de validación de carga raw. No es necesario para ejecutar la entrega si se corre el master. |
 | `01_powerbi_predicciones.ipynb` | Auxiliar de validación de predicciones. No es necesario para ejecutar la entrega si se corre el master. |
 | `02_aporte_adicional_rag_llm.ipynb` | Auxiliar de demo RAG. El master ya contiene una celda editable para hacer preguntas al LLM. |
@@ -272,7 +272,7 @@ Dashboard interactivo con dos módulos orientados a perfiles distintos del negoc
 - **Módulo Descriptivo**: KPIs de cartera (mora por segmento, distribución geográfica, concentración por producto), conectado a `fact_creditos`, `dim_cliente`, `dim_producto_credito`, `dim_tiempo` y `perfil_descriptivo_cliente`.
 - **Módulo Predictivo**: Distribución de probabilidades de mora del modelo, segmentación de riesgo y alertas de originación, conectado a `predicciones_riesgo.CSV`.
 
-> Los datos locales del dashboard se regeneran ejecutando [0_Master_Pipeline.ipynb](0_Master_Pipeline.ipynb). El mini data lake replica la semántica de `abt_analitica_riesgo`, `predicciones_riesgo`, dimensiones y hechos usados en Supabase.
+> Los datos locales del dashboard se regeneran ejecutando [01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb](01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb). El mini data lake replica la semántica de `abt_analitica_riesgo`, `predicciones_riesgo`, dimensiones y hechos usados en Supabase.
 
 ![Dashboard — Módulo Descriptivo](dashboard/capturas/descriptiva.png)
 ![Dashboard — Módulo Predictivo](dashboard/capturas/predictiva.png)
@@ -299,7 +299,7 @@ Si bien la solución presentada es totalmente funcional, en un escenario product
 
 Este proyecto fue desarrollado siguiendo principios de ingeniería de software aplicada a datos:
 
-- **Reproducibilidad**: El pipeline completo es re-ejecutable desde cero con `0_Master_Pipeline.ipynb`. Los datos raw y artefactos de modelo no se versionan, pero el código que los genera sí.
+- **Reproducibilidad**: El pipeline completo es re-ejecutable desde cero con `01_Pipeline_Data_Model.ipynb y 02_Pipeline_RAG_LLM.ipynb`. Los datos raw y artefactos de modelo no se versionan, pero el código que los genera sí.
 - **Separación de responsabilidades**: Cada módulo tiene una única responsabilidad (ingesta, limpieza, features, entrenamiento, API, RAG). La configuración centralizada en `config.py` evita valores hardcodeados.
 - **Anti-leakage por diseño**: El feature engineering aplica filtros temporales explícitos en cada join. El target se construye con `fecha_vencimiento`, no `fecha_pago`, para preservar morosos sin fecha de pago registrada.
 - **Trazabilidad de outliers**: Los datos raw nunca se modifican. Las correcciones (winsorización, imputación) ocurren en la capa de procesamiento y se documentan con flags en las vistas analíticas.
