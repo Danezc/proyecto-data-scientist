@@ -25,8 +25,8 @@ class MoraModelTrainer:
         """Carga la Tabla Analítica Final (ABT)."""
         logger.info(f"Cargando ABT desde {self.data_path}")
         if self.data_path.suffix == '.csv':
-            return pd.read_parquet(self.data_path)
-        return pd.read_csv(self.data_path)
+            return pd.read_csv(self.data_path)
+        return pd.read_parquet(self.data_path)
         
     def train_test_split_custom(self, df: pd.DataFrame, target_col: str = 'es_moroso') -> Tuple:
         """
